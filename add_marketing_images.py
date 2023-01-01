@@ -9,7 +9,7 @@ from pdf2image import convert_from_path
 
 import shutil
 
-# Setup logging s
+# Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
