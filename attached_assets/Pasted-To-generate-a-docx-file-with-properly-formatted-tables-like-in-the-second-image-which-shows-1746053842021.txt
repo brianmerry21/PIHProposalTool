@@ -1,0 +1,83 @@
+To generate a `.docx` file with properly formatted tables (like in the **second image**, which shows consistent column widths and multi-level row styling), I recommend using the Python library **`python-docx`**. This library gives you detailed control over table structure, column widths, cell content, and styling.
+
+---
+
+### ✅ Why you're seeing the *first* format:
+When you don't **explicitly set column widths** and **style table borders or merge cells**, `python-docx` (or whatever method you're using) will fall back to default formatting — which results in unaligned columns and inconsistent styling, like in the first image.
+
+---
+
+### ✅ What you want (like in the second image):
+- Fixed column widths (especially "Price Ea.", "Qty.", "Prices")
+- Bold section headers (like "System Investment", "Freight", etc.)
+- Possibly merged cells for grouping
+- Consistent alignment
+
+---
+
+### 🛠️ Recommended Steps with `python-docx`:
+
+#### 1. **Install the library**
+If you haven’t already:
+```bash
+pip install python-docx
+```
+
+#### 2. **Example Code to Create a Styled Table**
+
+```python
+from docx import Document
+from docx.shared import Inches, Pt
+from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
+
+# Create a document
+doc = Document()
+
+# Add a heading
+doc.add_heading('System Investment: 1 MODULA®LIFT NG VLM, Model ML25\nUnit Pricing', level=1)
+
+# Create table
+table = doc.add_table(rows=1, cols=4)
+table.autofit = False  # Important to allow setting custom widths
+
+# Set column widths (in inches)
+widths = [Inches(3.5), Inches(1.0), Inches(0.7), Inches(1.0)]
+
+# Header row
+hdr_cells = table.rows[0].cells
+headers = ["Items", "Price Ea.", "Qty.", "Prices"]
+for i, (cell, width) in enumerate(zip(hdr_cells, widths)):
+    cell.text = headers[i]
+    cell.width = width
+    # Optionally, make header text bold
+    for paragraph in cell.paragraphs:
+        for run in paragraph.runs:
+            run.bold = True
+
+# Example row data
+rows = [
+    ("MODULA® MODULA®LIFT NG VLM, Model ML25 VLM With Single-Tray Presentation", "$96,332.46", "1", "$96,332.46"),
+    ("ISO7 Cleanroom Ready", "$1,000.00", "1", "$1,000.00"),
+    ("Freight to Hillsboro, OR (1 Truck, Rear Load)", "Included", "1", "Included"),
+]
+
+# Add rows to table
+for item, price_ea, qty, price in rows:
+    cells = table.add_row().cells
+    for i, val in enumerate([item, price_ea, qty, price]):
+        cells[i].text = val
+        cells[i].width = widths[i]
+
+# Save document
+doc.save("modula_system_investment.docx")
+```
+
+---
+
+### ✅ Tips for Further Enhancements
+- Use `.merge()` to combine cells across columns for section headers like “**Freight**”.
+- Apply paragraph alignment using `cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER`.
+- Add borders using XML manipulation (requires some extra code; I can help you with that if needed).
+
+Would you like an example that includes merged rows and styled section headers like “**Software**” and “**Installation and Warranty**”?

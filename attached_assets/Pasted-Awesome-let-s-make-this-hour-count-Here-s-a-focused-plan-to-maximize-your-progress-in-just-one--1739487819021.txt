@@ -1,0 +1,118 @@
+Awesome — let’s make this hour count. Here's a focused plan to *maximize your progress* in just one hour and leave you with something working (or nearly working):
+
+---
+
+### 🕐 **60-Minute Power Build Plan: File Upload Web App (Repl.it + Flask)**
+
+#### ⏱️ Minute 0–10: **Set Up the Project Environment**
+- Go to Replit and start a new **Python (Flask)** repl
+- Set up the basic folder structure:
+  ```
+  /static
+  /templates
+  main.py
+  ```
+- Install needed packages (Replit > Packages tab or via `pip install` in shell):
+  ```
+  flask
+  pandas
+  openpyxl
+  python-docx
+  pdfplumber
+  ```
+
+---
+
+#### ⏱️ Minute 10–25: **Build File Upload UI**
+- Create `templates/index.html` with a file upload form:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PDF Upload</title>
+</head>
+<body>
+  <h2>Upload your pricing PDF</h2>
+  <form action="/process" method="post" enctype="multipart/form-data">
+    <input type="file" name="pdf_file" accept="application/pdf" required><br><br>
+    <button type="submit">Generate Files</button>
+  </form>
+</body>
+</html>
+```
+
+- Create `main.py` and wire up Flask routes:
+
+```python
+from flask import Flask, request, render_template, send_file
+import os
+
+app = Flask(__name__)
+
+@app.route("/")
+def upload_page():
+    return render_template("index.html")
+
+@app.route("/process", methods=["POST"])
+def process_pdf():
+    uploaded_file = request.files["pdf_file"]
+    if uploaded_file.filename != "":
+        filepath = os.path.join("static", uploaded_file.filename)
+        uploaded_file.save(filepath)
+
+        # Placeholder: Process PDF to Excel and Word
+        # Simulate with dummy files for now
+        excel_path = "static/output.xlsx"
+        word_path = "static/output.docx"
+        open(excel_path, "w").write("Fake Excel content")
+        open(word_path, "w").write("Fake Word content")
+
+        return f'''
+            <p>Files generated!</p>
+            <a href="/download/excel">Download Excel</a><br>
+            <a href="/download/word">Download Word</a><br>
+            <a href="/">Back</a>
+        '''
+    return "No file uploaded."
+
+@app.route("/download/<filetype>")
+def download_file(filetype):
+    if filetype == "excel":
+        return send_file("static/output.xlsx", as_attachment=True)
+    elif filetype == "word":
+        return send_file("static/output.docx", as_attachment=True)
+    else:
+        return "Invalid file type."
+```
+
+---
+
+#### ⏱️ Minute 25–45: **Test and Polish**
+- Upload a dummy PDF and make sure:
+  - File upload works
+  - Placeholder Excel/Word files are generated
+  - Download links function correctly
+
+---
+
+#### ⏱️ Minute 45–60: **Plan Your PDF Extraction Logic**
+While the interface is done, take 15 minutes to sketch your **extraction logic**:
+
+- Open one of the real PDFs
+- Use `pdfplumber` or `PyPDF2` to explore extracting the text/tables
+- Figure out:
+  - What info is needed for the Excel?
+  - What info goes into the Word proposal?
+  - Is it tabular or text-based data?
+
+---
+
+### ✅ Result at the End of the Hour:
+- ✅ Web app with working upload and download flow
+- ✅ Clean Flask structure
+- ✅ You’re 100% ready to plug in your PDF-to-Excel/doc logic next
+
+---
+
+If you want, I can give you the exact starter code to paste in — or walk you through the PDF parsing part once you upload an example. Let me know what you prefer next.

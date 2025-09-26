@@ -1,0 +1,113 @@
+{% extends 'layout.html' %}
+
+{% block title %}Document Preview{% endblock %}
+
+{% block head %}
+{{ super() }}
+<style>
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+    
+    body > .container-fluid {
+        padding: 0;
+        margin: 0;
+        height: 100vh;
+        max-width: 100%;
+    }
+    
+    .header-bar {
+        background-color: #212529;
+        color: white;
+        padding: 10px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 60px;
+    }
+    
+    .pdf-container {
+        height: calc(100vh - 60px);
+        width: 100%;
+    }
+    
+    .pdf-iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Top fixed header -->
+    <div class="header-bar">
+        <h3 class="m-0">Document Preview: {{ preview_data.filename }}</h3>
+        
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Home
+            </a>
+            <a href="javascript:void(0)" id="download-btn" class="btn btn-primary">
+                <i class="fas fa-download"></i> Download Word Document
+            </a>
+        </div>
+    </div>
+    
+    <!-- Full screen PDF viewer -->
+    <div class="pdf-container">
+        <iframe class="pdf-iframe" src="{{ preview_data.preview_url }}" frameborder="0"></iframe>
+    </div>
+</div>
+
+<!-- Warning Modal -->
+<div class="modal fade" id="warningModal" tabindex="-1" aria-labelledby="warningModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title" id="warningModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Important Reminder
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="lead">ALERT! Please personalize the Executive Summary on page 2, and review the document in full before sending to the customer.</p>
+                <p class="text-center mb-0"><strong>Mike and John are watching 👀</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a href="{{ preview_data.download_url }}" class="btn btn-primary">Download Now</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const downloadBtn = document.getElementById('download-btn');
+    
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Show the warning modal
+            try {
+                const warningModal = new bootstrap.Modal(document.getElementById('warningModal'));
+                warningModal.show();
+            } catch (error) {
+                console.error('Bootstrap modal error:', error);
+                if (confirm('ALERT! Please personalize the Executive Summary on page 2, and review the document in full before sending to the customer.\n\nMike and John are watching 👀\n\nClick OK to download or Cancel to review further.')) {
+                    window.location.href = "{{ preview_data.download_url }}";
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

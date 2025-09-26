@@ -1,0 +1,200 @@
+📑 Suggested Table of Contents
+Cover Page
+
+Executive Summary
+
+Project Overview
+
+Why VLMs (Vertical Lift Modules)?
+
+Why Modula VLM?
+
+Why Pacific Integrated Handling (PIH)?
+
+Technical Specifications
+
+Performance Overview
+
+System Drawings and Conceptual Designs
+
+Investment Summary
+
+Optional Add-Ons & Upgrades
+
+Inclusions and Exclusions
+
+Key Features Summary
+
+Software Overview
+
+Advanced Modules (WMS Premium)
+
+Optional Accessories
+
+Third-Party Software Integrations
+
+PC & Client Workstation Requirements
+
+Sign-off and Acceptance
+
+🧾 Hyper-Descriptive Breakdown of the PDF Document
+1. Cover Page
+The cover features the Thermo Fisher project proposal, prepared by Pacific Integrated Handling (PIH), dated March 18, 2025.
+
+Proposal #00051890.
+
+Contact: Josh Jancola, PIH (contact info provided).
+
+Project title: Modula ML25 Vertical Lift Module for the Hillsboro Cleanroom​
+.
+
+2. Executive Summary
+Purpose: Propose an advanced storage solution using a Modula ML25 Vertical Lift Module (VLM) for a Thermo Fisher cleanroom in Hillsboro, OR.
+
+Outcome: Maximize vertical space efficiency, increase storage capacity, and reduce operational inefficiencies​
+.
+
+3. Project Overview
+VLM dimensions: 145.67" H x 177.83" W x 100.03" D.
+
+Storage capacity: 634.66 sq ft of tray area, 363.6 cu ft of volume.
+
+Includes 22 slotted trays, each capable of holding up to 551 lbs.
+
+Designed with ISO7 cleanroom readiness and CE-standard safety features.
+
+Equipped with Modula WMS Premium software for inventory and process optimization​
+.
+
+4. Why VLMs?
+Benefits: Space savings, improved ergonomics, safety, productivity, and inventory accuracy.
+
+Enables 24/7 inventory traceability and densified storage configurations​
+.
+
+5. Why Modula?
+Modular, non-proprietary parts.
+
+Ergonomic control panels and best-in-class anti-seismic features.
+
+Made in the USA—compliant with "Buy America" standards​
+.
+
+6. Why PIH?
+Leading Modula distributor in the Pacific Northwest.
+
+Offers exclusive 3-scheduled maintenance visits (vs standard 1).
+
+Includes factory-certified techs and $250K+ spare parts inventory​
+.
+
+7. Technical Specifications
+Detailed on page 5, including:
+
+Tray dimensions (161.41” W x 25.75” D).
+
+Power requirements (208V, 12 Amp breaker).
+
+Load capacities, unit height (3700 mm), and footprint (11.5 ft²).
+
+Page 6: Tray configurations with square and cubic footage by height.
+
+Page 7: Unit layout diagrams and internal bay specifications​
+.
+
+8. Performance Overview
+Tray delivery time: 15–22 sec.
+
+Picking time: 36–50 picks/hour.
+
+Internal single tray delivery system shown in charts and diagrams​
+.
+
+9. System Drawings & Conceptual Designs
+Pages 9–10 include:
+
+"Put to Light" concept (not priced in).
+
+Detailed engineering drawings for the Modula ML25-3700​
+.
+
+10. Investment Summary
+Page 11:
+
+Total system cost: $176,789.
+
+Includes machine, installation, training, warranty, and WMS Premium software​
+.
+
+11. Optional Add-Ons & Upgrades
+Page 12 includes:
+
+ESD protection, wireless scanners, RFID readers, badge readers, premium support options.
+
+Tray dividers and put-to-light system marked as TBD​
+.
+
+12. Inclusions and Exclusions
+Page 13:
+
+Inclusions: Installation, manuals, training, 2-year warranty.
+
+Exclusions: Permits, fire suppression, power hookup, computer hardware​
+.
+
+13. Key Features Summary
+Pages 14–17:
+
+Tray delivery types (dual tray options).
+
+Automatic closing doors.
+
+Operator-friendly CoPilot control interface with touch screen and emergency stop.
+
+Picking bays: internal/external configurations.
+
+Enhanced lighting and ergonomic features​
+.
+
+14. Software Overview
+Pages 23–25: Modula WMS software capabilities:
+
+Barcode integration, ERP interfacing, FIFO, cycle counting, reporting tools.
+
+WMS Premium includes dynamic compartment allocation and reporting enhancements​
+.
+
+15. Advanced Modules (WMS Premium)
+Pages 26–27 describe:
+
+Advanced Item Management: permissions, filtering, role-based access.
+
+Advanced Picking: laser guidance and operator tracking.
+
+Manual Warehouse and RF Module add-ons​
+.
+
+16. Optional Accessories
+Pages 20–22:
+
+Foot bar, sliding console, laser pointer, LED bars, RFID/badge readers, label printer, etc.
+
+Piece counting scale, Modula Green power-saving system​
+.
+
+17. Third-Party Software Integrations
+Page 29:
+
+DMS (Dealer Management Systems) integrations for automotive contexts.
+
+Annual license renewal requirement​
+.
+
+18. PC & Client Workstation Requirements
+Pages 30–31:
+
+Server: Intel i7/i5/i3 CPU, 8–16 GB RAM, RAID1 SSD, Ethernet, Windows OS.
+
+Client: Intel i3 CPU, 8 GB RAM, Windows 8/10/11, 17”+ monitor, updated service packs​
+.
+

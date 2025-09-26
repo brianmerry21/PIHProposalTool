@@ -1,0 +1,28 @@
+Excel Template Analysis: CostSheetTemplate.xlsx
+================================================================================
+Number of sheets: 1
+Sheet names: Primary Option
+
+Sheet: Primary Option
+----------------------------------------
+Dimensions: 75 rows x 17 columns
+Content Cells (first 20 rows):
+  Cell F2: Created Date
+  Cell F3: Last Edited
+  Cell A5: Item #
+  Cell B5: Description
+  Cell C5: Total List
+  Cell D5: Factory Install
+  Cell E5: Machine list
+  Cell F5: Discount 
+  Cell G5: Cost 
+  Cell I5: Margin
+  Cell J5: Sell price
+  Cell K5: Qty
+  Cell L5: Total sell price 
+  Cell M5: Total cost 
+  Cell N5: Total sell price 
+  Cell O5: Proposal Each
+  Cell P5: Proposal 
+  Cell B6: Machine
+  Cell B17: Software

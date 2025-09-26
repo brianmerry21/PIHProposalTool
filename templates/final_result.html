@@ -1,0 +1,117 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0"><i class="fas fa-check-circle me-2"></i>Document Generated Successfully</h4>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="display-4 text-success mb-3">
+                        <i class="fas fa-file-word"></i>
+                    </div>
+                    <h5>Your Proposal Document has been generated successfully!</h5>
+                    <p class="text-muted">The document combines data from both the original PDF and your edited Excel file.</p>
+                </div>
+
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>Processing Complete!</strong> Your proposal document has been created using data from both the original PDF and your edited Excel cost sheet.
+                </div>
+
+                <div class="row g-4 mb-4">
+                    <div class="col-md-12">
+                        <div class="card h-100 border-danger">
+                            <div class="card-body text-center">
+                                <div class="display-4 text-danger mb-3">
+                                    <i class="fas fa-file-word"></i>
+                                </div>
+                                <h5 class="card-title">Final Proposal Document (Word)</h5>
+                                <p class="card-text">Download the complete proposal document with marketing pages</p>
+                                <div class="d-grid gap-2">
+                                    <a href="{{ url_for('preview_file', file_type='word', filename_base=file_data.filename_base) }}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-eye me-2"></i>Preview Document
+                                    </a>
+                                    <a href="javascript:void(0)" id="word-download-btn" class="btn btn-danger">
+                                        <i class="fas fa-download me-2"></i>Download Document (with Marketing Pages)
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="original-file-info p-3 bg-light rounded mb-4">
+                    <p class="mb-0">
+                        <strong>Original PDF:</strong> {{ file_data.original_name }}
+                    </p>
+                    <p class="mb-0">
+                        <strong>Excel File:</strong> {{ file_data.excel_path.split('/')[-1] if file_data.excel_path else 'Generated from PDF' }}
+                    </p>
+                    {% if file_data.logo_path %}
+                    <p class="mb-0 mt-2">
+                        <strong>Customer logo:</strong> Included in Word document
+                        <img src="{{ file_data.logo_path.replace('/home/runner/workspace/static', '/static') }}" 
+                             alt="Customer Logo" class="mt-2 img-thumbnail" style="max-height: 80px;">
+                    </p>
+                    {% endif %}
+                </div>
+
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Convert Another Proposal
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for the document download alert -->
+<div class="modal fade" id="docAlertModal" tabindex="-1" aria-labelledby="docAlertModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="docAlertModalLabel"><i class="fas fa-exclamation-triangle me-2"></i>Important Reminder</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="lead">ALERT! Please personalize the Executive Summary on page 2, and review the document in full before sending to the customer.</p>
+                <p>This document includes the complete marketing package as additional pages.</p>
+                <p class="text-center mb-0"><strong>Mike and John are watching 👀</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a href="{{ url_for('download_file', file_type='word', filename_base=file_data.filename_base) }}" 
+                   class="btn btn-primary" id="confirm-download-btn">Download Document</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Modal handling for the word document download
+    const wordDownloadBtn = document.getElementById('word-download-btn');
+
+    // Create a modal instance
+    const modal = new bootstrap.Modal(document.getElementById('docAlertModal'), {
+        backdrop: 'static'  // Prevents closing when clicking outside
+    });
+
+    // Show the modal when Word Download button is clicked
+    wordDownloadBtn.addEventListener('click', function(event) {
+        event.preventDefault();
+
+        // Set the confirm button to download Word with marketing pages as PDF
+        document.getElementById('confirm-download-btn').href = "{{ url_for('download_file', file_type='word', filename_base=file_data.filename_base) }}?format=pdf";
+        document.getElementById('confirm-download-btn').textContent = "Download Document (with Marketing Pages)";
+
+        // Show the modal
+        modal.show();
+    });
+});
+</script>
+{% endblock %}

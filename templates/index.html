@@ -1,0 +1,333 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-file-upload me-2"></i>Upload PDF</h4>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="display-4 text-primary mb-3">
+                        <i class="fas fa-file-pdf"></i>
+                    </div>
+                    <h5>Convert PIH Pricing Proposals to Formatted Excel Sheets</h5>
+                    <p class="text-muted">Upload your pricing proposal PDF to automatically extract information and generate formatted cost sheets</p>
+                </div>
+
+                {% if error %}
+                <div class="alert alert-danger" role="alert">
+                    {{ error }}
+                </div>
+                {% endif %}
+
+                <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" id="upload-form">
+                    <div class="mb-4">
+                        <div class="input-group mb-3">
+                            <input type="file" class="form-control" name="pdf_file" id="pdf_file" accept=".pdf" required>
+                            <label class="input-group-text" for="pdf_file">
+                                <i class="fas fa-file-pdf me-2"></i>Choose PDF
+                            </label>
+                        </div>
+                        <div class="form-text">Only PDF files are supported</div>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header bg-info text-white">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="customInfoToggle" name="use_custom_info">
+                                <label class="form-check-label" for="customInfoToggle">Override PDF Information (Optional)</label>
+                            </div>
+                        </div>
+                        <div class="card-body" id="customInfoFields" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="customer_name" class="form-label">Customer Name</label>
+                                    <input type="text" class="form-control" id="customer_name" name="customer_name" placeholder="">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="location" class="form-label">Location</label>
+                                    <input type="text" class="form-control" id="location" name="location" placeholder="Hillsboro, OR">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="proposal_number" class="form-label">Proposal Number</label>
+                                    <input type="text" class="form-control" id="proposal_number" name="proposal_number" placeholder="00051890">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="proposal_date" class="form-label">Proposal Date</label>
+                                    <input type="date" class="form-control" id="proposal_date" name="proposal_date">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label for="model" class="form-label">Model</label>
+                                    <input type="text" class="form-control" id="model" name="model" placeholder="Modula ML25 Vertical Lift Module">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label class="form-label">VLM Model Image for Cover Page</label>
+                                    <div id="vlm_image_gallery" class="row g-2 mb-3">
+                                        <div class="col-md-4 col-sm-6">
+                                            <div class="vlm-image-option" data-vlm="vlm1.jpg">
+                                                <img src="/static/images/vlm_library/vlm1.jpg" class="img-fluid rounded border" alt="ML15 Compact">
+                                                <div class="text-center mt-1">
+                                                    <small class="text-muted">ML15 Compact</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 col-sm-6">
+                                            <div class="vlm-image-option" data-vlm="vlm2.jpg">
+                                                <img src="/static/images/vlm_library/vlm2.jpg" class="img-fluid rounded border" alt="ML25 Standard">
+                                                <div class="text-center mt-1">
+                                                    <small class="text-muted">ML25 Standard</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 col-sm-6">
+                                            <div class="vlm-image-option" data-vlm="vlm3.jpg">
+                                                <img src="/static/images/vlm_library/vlm3.jpg" class="img-fluid rounded border" alt="ML35 Extended">
+                                                <div class="text-center mt-1">
+                                                    <small class="text-muted">ML35 Extended</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 col-sm-6">
+                                            <div class="vlm-image-option" data-vlm="vlm4.jpg">
+                                                <img src="/static/images/vlm_library/vlm4.jpg" class="img-fluid rounded border" alt="ML50 Heavy Duty">
+                                                <div class="text-center mt-1">
+                                                    <small class="text-muted">ML50 Heavy Duty</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 col-sm-6">
+                                            <div class="vlm-image-option" data-vlm="vlm5.jpg">
+                                                <img src="/static/images/vlm_library/vlm5.jpg" class="img-fluid rounded border" alt="ML75 Industrial">
+                                                <div class="text-center mt-1">
+                                                    <small class="text-muted">ML75 Industrial</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 col-sm-6">
+                                            <div class="vlm-image-option" data-vlm="vlm6.jpg">
+                                                <img src="/static/images/vlm_library/vlm6.jpg" class="img-fluid rounded border" alt="ML100 Maximum">
+                                                <div class="text-center mt-1">
+                                                    <small class="text-muted">ML100 Maximum</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" id="selected_vlm_image" name="selected_vlm_image" value="">
+                                    <div class="form-text">Click on an image to select it for the cover page</div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-8 mb-3">
+                                    <label for="customer_logo" class="form-label">Customer Logo (Optional)</label>
+                                    <input type="file" class="form-control" id="customer_logo" name="customer_logo" accept=".png,.jpg,.jpeg,.gif">
+                                    <div class="form-text">Company logo to include in the Word document</div>
+                                </div>
+                                <div class="col-md-4 mb-3 d-flex align-items-end">
+                                    <div class="form-check mt-2">
+                                        <input class="form-check-input" type="checkbox" id="remove_logo_bg" name="remove_logo_bg">
+                                        <label class="form-check-label" for="remove_logo_bg">
+                                            Remove Background
+                                        </label>
+                                    </div>
+                                </div>
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label for="page_nine_image" class="form-label">Page Nine Cut Sheet Image (Optional)</label>
+                                    <input type="file" class="form-control" id="page_nine_image" name="page_nine_image" accept=".png,.jpg,.jpeg,.gif">
+                                    <div class="form-text">Image to include on page 9 of the document (leave blank to skip page 9)</div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <h6 class="text-muted">Contact Information</h6>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="salesperson_select" class="form-label">Select Salesperson</label>
+                                    <select class="form-select" id="salesperson_select" name="salesperson_select">
+                                        <option value="">Choose a salesperson...</option>
+                                        <option value="josh">Josh Jancola</option>
+                                        <option value="noah">Noah Aldes</option>
+                                        <option value="tyler">Tyler Rickard</option>
+                                        <option value="ivan">Ivan Razo</option>
+                                        <option value="matthew">Matthew Jimenez</option>
+                                        <option value="mike">Mike Cleary</option>
+                                        <option value="john">John Hollyoak</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="contact_phone" class="form-label">Contact Phone</label>
+                                    <input type="text" class="form-control" id="contact_phone" name="contact_phone" placeholder="253.500.4193" readonly>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="contact_name" class="form-label">Contact Name</label>
+                                    <input type="text" class="form-control" id="contact_name" name="contact_name" placeholder="Josh Jancola" readonly>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="contact_email" class="form-label">Contact Email</label>
+                                    <input type="email" class="form-control" id="contact_email" name="contact_email" placeholder="joshjancola@pacificintegrated.com" readonly>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="contact_office" class="form-label">Office Phone</label>
+                                    <input type="text" class="form-control" id="contact_office" name="contact_office" value="888.550.5888" readonly>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                            <i class="fas fa-cogs me-2"></i>Process PDF
+                        </button>
+                    </div>
+                </form>
+                
+                <script>
+                    // Salesperson contact information
+                    const salespeople = {
+                        'josh': {
+                            name: 'Josh Jancola',
+                            email: 'joshjancola@pacificintegrated.com',
+                            phone: '253.500.4193'
+                        },
+                        'noah': {
+                            name: 'Noah Aldes',
+                            email: 'naldes@pacificintegrated.com',
+                            phone: '408-834-2376'
+                        },
+                        'tyler': {
+                            name: 'Tyler Rickard',
+                            email: 'trickard@pacificintegrated.com',
+                            phone: '669-315-1009'
+                        },
+                        'ivan': {
+                            name: 'Ivan Razo',
+                            email: 'irazo@pacificintegrated.com',
+                            phone: '408-992-5804'
+                        },
+                        'matthew': {
+                            name: 'Matthew Jimenez',
+                            email: 'mjimenez@pacificintegrated.com',
+                            phone: '602-869-1528'
+                        },
+                        'mike': {
+                            name: 'Mike Cleary',
+                            email: 'mcleary@pacificintegrated.com',
+                            phone: '602-869-3323'
+                        },
+                        'john': {
+                            name: 'John Hollyoak',
+                            email: 'jhollyoak@pacificintegrated.com',
+                            phone: '253-548-5294'
+                        }
+                    };
+
+                    // Toggle custom info fields visibility
+                    document.getElementById('customInfoToggle').addEventListener('change', function() {
+                        document.getElementById('customInfoFields').style.display = this.checked ? 'block' : 'none';
+                    });
+
+                    // Handle salesperson selection
+                    document.getElementById('salesperson_select').addEventListener('change', function() {
+                        const selectedSalesperson = this.value;
+                        const contactNameField = document.getElementById('contact_name');
+                        const contactEmailField = document.getElementById('contact_email');
+                        const contactPhoneField = document.getElementById('contact_phone');
+
+                        if (selectedSalesperson && salespeople[selectedSalesperson]) {
+                            const person = salespeople[selectedSalesperson];
+                            contactNameField.value = person.name;
+                            contactEmailField.value = person.email;
+                            contactPhoneField.value = person.phone;
+                        } else {
+                            // Clear fields if no selection
+                            contactNameField.value = '';
+                            contactEmailField.value = '';
+                            contactPhoneField.value = '';
+                        }
+                    });
+
+                    // Handle VLM image selection
+                    document.querySelectorAll('.vlm-image-option').forEach(function(option) {
+                        option.addEventListener('click', function() {
+                            // Remove selection from all options
+                            document.querySelectorAll('.vlm-image-option').forEach(function(opt) {
+                                opt.classList.remove('selected');
+                                opt.querySelector('img').style.filter = 'blur(2px) opacity(0.6)';
+                            });
+                            
+                            // Select this option
+                            this.classList.add('selected');
+                            this.querySelector('img').style.filter = 'none';
+                            
+                            // Set the hidden input value
+                            document.getElementById('selected_vlm_image').value = this.dataset.vlm;
+                        });
+                    });
+
+                    // Initialize VLM images with blur effect (none selected initially)
+                    document.querySelectorAll('.vlm-image-option img').forEach(function(img) {
+                        img.style.filter = 'blur(2px) opacity(0.6)';
+                        img.style.transition = 'filter 0.3s ease';
+                    });
+                </script>
+            </div>
+        </div>
+
+        <div class="card mt-4 shadow">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>How It Works</h5>
+        </div>
+        <div class="card-body">
+            <div class="d-flex justify-content-between text-center">
+                <div style="width: 20%;">
+                    <div class="display-6 text-primary mb-1" style="font-size: 2rem;">
+                        <i class="fas fa-upload"></i>
+                    </div>
+                    <h6 style="font-size: 1rem;">Upload</h6>
+                    <p class="text-muted" style="font-size: 0.85rem;">Upload your Pricing Proposal PDF</p>
+                </div>
+                <div style="width: 20%;">
+                    <div class="display-6 text-primary mb-1" style="font-size: 2rem;">
+                        <i class="fas fa-magic"></i>
+                    </div>
+                    <h6 style="font-size: 1rem;">Extract</h6>
+                    <p class="text-muted" style="font-size: 0.85rem;">System extracts data from PDF</p>
+                </div>
+                <div style="width: 20%;">
+                    <div class="display-6 text-primary mb-1" style="font-size: 2rem;">
+                        <i class="fas fa-edit"></i>
+                    </div>
+                    <h6 style="font-size: 1rem;">Review</h6>
+                    <p class="text-muted" style="font-size: 0.85rem;">Edit prices and line items</p>
+                </div>
+                <div style="width: 20%;">
+                    <div class="display-6 text-primary mb-1" style="font-size: 2rem;">
+                        <i class="fas fa-upload"></i>
+                    </div>
+                    <h6 style="font-size: 1rem;">Reupload</h6>
+                    <p class="text-muted" style="font-size: 0.85rem;">Upload updated cost sheet</p>
+                </div>
+                <div style="width: 20%;">
+                    <div class="display-6 text-primary mb-1" style="font-size: 2rem;">
+                        <i class="fas fa-download"></i>
+                    </div>
+                    <h6 style="font-size: 1rem;">Download</h6>
+                    <p class="text-muted" style="font-size: 0.85rem;">Get Excel and Word files</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

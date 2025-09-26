@@ -1,0 +1,491 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-edit me-2"></i>Review Extracted Data</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> Please review and edit the extracted data below. You can update descriptions, prices, and quantities as needed before generating the final documents.
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-secondary text-white">
+                                    <h5 class="mb-0">Customer Information</h5>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-borderless">
+                                        <tr>
+                                            <th width="30%">Customer:</th>
+                                            <td>{{ extraction.customer_name }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Proposal #:</th>
+                                            <td>{{ extraction.proposal_number }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Date:</th>
+                                            <td>{{ extraction.proposal_date }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Location:</th>
+                                            <td>{{ extraction.location }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-secondary text-white">
+                                    <h5 class="mb-0">VLM Specifications</h5>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-borderless">
+                                        <tr>
+                                            <th width="30%">Model:</th>
+                                            <td>{{ extraction.vlm_model }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Height:</th>
+                                            <td>{{ extraction.vlm_height }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Trays:</th>
+                                            <td>{{ extraction.tray_quantity }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Dimensions:</th>
+                                            <td>{{ extraction.tray_width }}" W x {{ extraction.tray_depth }}" D</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form id="process-form" method="POST" action="{{ url_for('process_extraction', extraction_id=extraction.id) }}">
+                        <div class="card mb-4">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">Line Items</h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table table-hover table-striped mb-0" id="line-items-table">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th width="40%">Items</th>
+                                            <th class="text-end">Price Ea.</th>
+                                            <th class="text-center">Qty.</th>
+                                            <th class="text-center">Margin %</th>
+                                            <th class="text-end">Prices</th>
+                                            <th class="text-center">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in line_items %}
+                                        {% if not item.is_optional %}
+                                        <tr class="{% if item.is_section_header %}bg-secondary text-white{% endif %}" data-item-id="{{ item.id }}">
+                                            {% if item.is_section_header %}
+                                                <td colspan="6" class="fw-bold">{{ item.description }}</td>
+                                            {% else %}
+                                                <td>
+                                                    <span class="item-description">{{ item.description }}</span>
+                                                    <input type="text" class="form-control item-edit-description d-none" value="{{ item.description }}">
+                                                </td>
+                                                <td class="text-end">
+                                                    {% if item.is_included %}
+                                                        <span class="item-price-each">Included</span>
+                                                        <input type="text" class="form-control item-edit-price-each d-none" value="Included">
+                                                    {% else %}
+                                                        <span class="item-price-each">${{ "%.2f"|format(item.price_each or 0.0) }}</span>
+                                                        <input type="text" class="form-control item-edit-price-each d-none" value="{{ "%.2f"|format(item.price_each or 0.0) }}" data-original-price="{{ "%.2f"|format(item.price_each or 0.0) }}">
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="item-quantity">{{ item.quantity }}</span>
+                                                    <input type="text" class="form-control item-edit-quantity d-none" value="{{ item.quantity }}">
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="item-margin">{{ item.margin_percent|default(0, true) }}%</span>
+                                                    <input type="text" class="form-control item-edit-margin d-none" value="{{ item.margin_percent|default(0, true) }}">
+                                                </td>
+                                                <td class="text-end">
+                                                    {% if item.is_included %}
+                                                        <span class="item-price-total">Included</span>
+                                                        <input type="text" class="form-control item-edit-price-total d-none" value="Included">
+                                                    {% else %}
+                                                        <span class="item-price-total">${{ "%.2f"|format(item.price_total or 0.0) }}</span>
+                                                        <input type="text" class="form-control item-edit-price-total d-none" value="{{ "%.2f"|format(item.price_total or 0.0) }}">
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-center">
+                                                    <div class="d-flex justify-content-center">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary edit-item-btn rounded-circle me-1" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-success save-item-btn d-none rounded-circle me-1" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" >
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary cancel-item-btn d-none rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            {% endif %}
+                                        </tr>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot class="table-dark">
+                                        <tr>
+                                            <td colspan="4" class="text-end fw-bold">Total:</td>
+                                            <td class="text-end fw-bold" id="total-price">${{ "%.2f"|format(total_price or 0.0) }}</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Optional Items Section -->
+                        <div class="card mt-4 shadow">
+                            <div class="card-header bg-secondary text-white">
+                                <h5 class="mb-0">Optional Items & Accessories (Not Included in Total)</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead class="table-primary">
+                                            <tr>
+                                                <th style="width: 55%">Description</th>
+                                                <th style="width: 15%" class="text-end">Price Ea.</th>
+                                                <th style="width: 10%" class="text-center">Qty</th>
+                                                <th style="width: 10%" class="text-end">Prices</th>
+                                                <th style="width: 10%" class="text-center">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in line_items %}
+                                            {% if item.is_optional %}
+                                            <tr class="item-row" data-item-id="{{ item.id }}">
+                                                <td>
+                                                    <span class="item-description">{{ item.description }}</span>
+                                                    <input type="text" class="form-control item-edit-description d-none" value="{{ item.description }}">
+                                                </td>
+                                                <td class="text-end">
+                                                    {% if item.is_tbd_price %}
+                                                        <span class="item-price-each">TBD</span>
+                                                        <input type="text" class="form-control item-edit-price-each d-none" value="TBD">
+                                                    {% else %}
+                                                        <span class="item-price-each">${{ "%.2f"|format(item.price_each or 0.0) }}</span>
+                                                        <input type="text" class="form-control item-edit-price-each d-none" value="{{ "%.2f"|format(item.price_each or 0.0) }}" data-original-price="{{ "%.2f"|format(item.price_each or 0.0) }}">
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="item-quantity">{{ item.quantity }}</span>
+                                                    <input type="text" class="form-control item-edit-quantity d-none" value="{{ item.quantity }}">
+                                                </td>
+                                                <td class="text-end">
+                                                    <span class="item-price-total">-</span>
+                                                    <input type="text" class="form-control item-edit-price-total d-none" value="-">
+                                                </td>
+                                                <td class="text-center">
+                                                    <div class="d-flex justify-content-center">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary edit-item-btn rounded-circle me-1" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-success save-item-btn d-none rounded-circle me-1" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" >
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary cancel-item-btn d-none rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 d-flex justify-content-end">
+                            <a href="{{ url_for('index') }}" class="btn btn-secondary me-2">
+                                <i class="fas fa-arrow-left me-1"></i> Back to Upload
+                            </a>
+                            <a href="{{ url_for('download_cost_sheet', extraction_id=extraction.id) }}" class="btn btn-success">
+                                <i class="fas fa-file-excel me-1"></i> Download Cost Sheet
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Edit button functionality
+    document.querySelectorAll('.edit-item-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const row = this.closest('tr');
+            const itemId = row.dataset.itemId;
+            
+            // Enable edit mode for this row
+            toggleEditMode(row, true);
+        });
+    });
+    
+    // Cancel button functionality
+    document.querySelectorAll('.cancel-item-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const row = this.closest('tr');
+            
+            // Disable edit mode without saving
+            toggleEditMode(row, false);
+        });
+    });
+    
+    // Save button functionality
+    document.querySelectorAll('.save-item-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const row = this.closest('tr');
+            const itemId = row.dataset.itemId;
+            
+            // Get values from edit inputs
+            const newDescription = row.querySelector('.item-edit-description').value;
+            const newPriceEach = row.querySelector('.item-edit-price-each').value;
+            const newQuantity = row.querySelector('.item-edit-quantity').value;
+            const newMargin = row.querySelector('.item-edit-margin')?.value || "0";
+            let newPriceTotal = row.querySelector('.item-edit-price-total')?.value;
+            
+            // Check if price is "Included" or "TBD"
+            let isIncluded = newPriceEach === "Included";
+            let isTbdPrice = newPriceEach === "TBD";
+            
+            // Calculate total price if not included or TBD
+            if (!isIncluded && !isTbdPrice && newPriceTotal !== "Option") {
+                // If price each and quantity are numbers, calculate total
+                if (!isNaN(parseFloat(newPriceEach)) && !isNaN(parseFloat(newQuantity))) {
+                    newPriceTotal = (parseFloat(newPriceEach) * parseFloat(newQuantity)).toFixed(2);
+                }
+            }
+            
+            // Update display values
+            row.querySelector('.item-description').textContent = newDescription;
+            
+            if (row.querySelector('.item-price-each')) {
+                if (isIncluded) {
+                    row.querySelector('.item-price-each').textContent = "Included";
+                } else if (isTbdPrice) {
+                    row.querySelector('.item-price-each').textContent = "TBD";
+                } else {
+                    row.querySelector('.item-price-each').textContent = '$' + parseFloat(newPriceEach).toFixed(2);
+                }
+            }
+            
+            if (row.querySelector('.item-quantity')) {
+                row.querySelector('.item-quantity').textContent = newQuantity;
+            }
+            
+            if (row.querySelector('.item-margin')) {
+                row.querySelector('.item-margin').textContent = newMargin + '%';
+            }
+            
+            if (row.querySelector('.item-price-total')) {
+                if (isIncluded) {
+                    row.querySelector('.item-price-total').textContent = "Included";
+                } else if (newPriceTotal === "-") {
+                    row.querySelector('.item-price-total').textContent = "-";
+                } else {
+                    row.querySelector('.item-price-total').textContent = '$' + parseFloat(newPriceTotal).toFixed(2);
+                }
+            }
+            
+            // Send data to server
+            fetch(`/update_item/${itemId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    description: newDescription,
+                    price_each: isIncluded || isTbdPrice ? 0 : parseFloat(newPriceEach),
+                    quantity: parseFloat(newQuantity),
+                    margin_percent: parseFloat(newMargin),
+                    price_total: newPriceTotal === "-" || isIncluded ? 0 : parseFloat(newPriceTotal),
+                    is_included: isIncluded,
+                    is_tbd_price: isTbdPrice
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Item updated successfully', data);
+                    
+                    // Update the display values with the returned data
+                    // Update description display
+                    row.querySelector('.item-description').textContent = newDescription;
+                    
+                    // Update price each display
+                    if (isIncluded) {
+                        row.querySelector('.item-price-each').textContent = 'Included';
+                    } else if (isTbdPrice) {
+                        row.querySelector('.item-price-each').textContent = 'TBD';
+                    } else {
+                        row.querySelector('.item-price-each').textContent = '$' + parseFloat(newPriceEach).toFixed(2);
+                    }
+                    
+                    // Update quantity display
+                    row.querySelector('.item-quantity').textContent = newQuantity;
+                    
+                    // Update margin percent if it exists
+                    if (row.querySelector('.item-margin')) {
+                        row.querySelector('.item-margin').textContent = newMargin + '%';
+                    }
+                    
+                    // Update price total display
+                    if (isIncluded) {
+                        row.querySelector('.item-price-total').textContent = 'Included';
+                    } else if (isTbdPrice || newPriceTotal === "Option" || newPriceTotal === "-") {
+                        row.querySelector('.item-price-total').textContent = '-';
+                    } else if (data.price_total !== null) {
+                        row.querySelector('.item-price-total').textContent = '$' + parseFloat(data.price_total).toFixed(2);
+                    }
+                    
+                    // Update total price at the bottom of the table
+                    if (data.total_price !== null) {
+                        document.getElementById('total-price').textContent = '$' + parseFloat(data.total_price).toFixed(2);
+                    }
+                    
+                    // Show a visual confirmation (flash the row green briefly)
+                    row.style.transition = 'background-color 0.5s';
+                    row.style.backgroundColor = '#d4edda';  // Bootstrap success light color
+                    setTimeout(() => {
+                        row.style.backgroundColor = '';
+                    }, 1000);
+                    
+                } else {
+                    console.error('Error updating item', data.error);
+                    alert('Error updating item: ' + data.error);
+                    
+                    // Flash the row red to indicate error
+                    row.style.transition = 'background-color 0.5s';
+                    row.style.backgroundColor = '#f8d7da';  // Bootstrap danger light color
+                    setTimeout(() => {
+                        row.style.backgroundColor = '';
+                    }, 1000);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating item');
+            });
+            
+            // Disable edit mode
+            toggleEditMode(row, false);
+        });
+    });
+    
+    // Helper function to toggle edit mode for a row
+    function toggleEditMode(row, editMode) {
+        // Show/hide the appropriate UI elements
+        if (editMode) {
+            // Hide display values, show edit inputs
+            if (row.querySelector('.item-description')) {
+                row.querySelector('.item-description').classList.add('d-none');
+                row.querySelector('.item-edit-description').classList.remove('d-none');
+            }
+            
+            if (row.querySelector('.item-price-each')) {
+                row.querySelector('.item-price-each').classList.add('d-none');
+                row.querySelector('.item-edit-price-each').classList.remove('d-none');
+            }
+            
+            if (row.querySelector('.item-quantity')) {
+                row.querySelector('.item-quantity').classList.add('d-none');
+                row.querySelector('.item-edit-quantity').classList.remove('d-none');
+            }
+            
+            if (row.querySelector('.item-margin')) {
+                row.querySelector('.item-margin').classList.add('d-none');
+                row.querySelector('.item-edit-margin').classList.remove('d-none');
+            }
+            
+            if (row.querySelector('.item-price-total')) {
+                row.querySelector('.item-price-total').classList.add('d-none');
+                if (row.querySelector('.item-edit-price-total')) {
+                    row.querySelector('.item-edit-price-total').classList.remove('d-none');
+                }
+            }
+            
+            // Hide edit button, show save/cancel buttons
+            row.querySelector('.edit-item-btn').classList.add('d-none');
+            row.querySelector('.save-item-btn').classList.remove('d-none');
+            row.querySelector('.cancel-item-btn').classList.remove('d-none');
+        } else {
+            // Show display values, hide edit inputs
+            if (row.querySelector('.item-description')) {
+                row.querySelector('.item-description').classList.remove('d-none');
+                row.querySelector('.item-edit-description').classList.add('d-none');
+            }
+            
+            if (row.querySelector('.item-price-each')) {
+                row.querySelector('.item-price-each').classList.remove('d-none');
+                row.querySelector('.item-edit-price-each').classList.add('d-none');
+            }
+            
+            if (row.querySelector('.item-quantity')) {
+                row.querySelector('.item-quantity').classList.remove('d-none');
+                row.querySelector('.item-edit-quantity').classList.add('d-none');
+            }
+            
+            row.querySelector('.item-margin').classList.remove('d-none');
+            if (row.querySelector('.item-edit-margin')) {
+                row.querySelector('.item-edit-margin').classList.add('d-none');
+            }
+            
+            row.querySelector('.item-price-total').classList.remove('d-none');
+            if (row.querySelector('.item-edit-price-total')) {
+                row.querySelector('.item-edit-price-total').classList.add('d-none');
+            }
+            
+            // Hide save/cancel buttons, show edit button
+            row.querySelector('.edit-item-btn').classList.remove('d-none');
+            row.querySelector('.save-item-btn').classList.add('d-none');
+            row.querySelector('.cancel-item-btn').classList.add('d-none');
+        }
+    }
+    
+    // Save all changes to make sure everything is updated properly
+    function saveAllUnsavedChanges() {
+        const pendingEdits = document.querySelectorAll('.save-item-btn:not(.d-none)');
+        pendingEdits.forEach(btn => {
+            btn.click();
+        });
+    }
+    
+    // Just make the Generate Documents button work normally without a modal
+    const generateBtn = document.getElementById('generate-docs-btn');
+    const processForm = document.getElementById('process-form');
+    
+    // Direct form submission when Generate Documents is clicked
+    generateBtn.addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent default form submission
+        saveAllUnsavedChanges(); // Make sure all edits are saved
+        
+        // Submit the form directly
+        processForm.submit();
+    });
+});
+</script>
+{% endblock %}

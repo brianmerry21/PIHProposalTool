@@ -1,0 +1,274 @@
+{% extends 'layout.html' %}
+
+{% block title %}Document Preview{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center bg-dark text-white p-3">
+                <h2 class="m-0">Document Preview: {{ preview_data.filename }}</h2>
+
+                <div class="d-flex">
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary me-2">
+                        <i class="bi bi-arrow-left"></i> Back to Home
+                    </a>
+                    {% if file_type == 'word' %}
+                        <a href="javascript:void(0)" id="word-download-btn" class="btn btn-primary">
+                        <i class="bi bi-download"></i> Download Document (includes Marketing)
+                    </a>
+                    {% else %}
+                        <a href="javascript:void(0)" id="excel-download-btn" class="btn btn-primary">
+                            <i class="bi bi-download"></i> Download File
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card border-0 rounded-0">
+                <div class="card-body p-0">
+                    {% if file_type == 'word' %}
+                        <div class="pdf-preview-container" style="height: calc(100vh - 70px); width: 100%;">
+                            <iframe src="{{ preview_data.preview_url }}" style="width: 100%; height: 100%; border: none;"></iframe>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info m-3">
+                            Preview is not available for this file type.
+                            <a href="{{ preview_data.download_url }}">Click here to download the file</a>.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal for the document download alert -->
+<div class="modal fade" id="docAlertModal" tabindex="-1" aria-labelledby="docAlertModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="docAlertModalLabel"><i class="fas fa-exclamation-triangle me-2"></i>Important Reminder</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="lead">ALERT! Please personalize the Executive Summary on page 2, and review the document in full before sending to the customer.</p>
+                <p class="text-center mb-0"><strong>Mike and John are watching 👀</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a href="{{ preview_data.download_url }}" class="btn btn-primary" id="confirm-download-btn">Download Now</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+    .word-document-preview {
+        font-family: 'Calibri', 'Arial', sans-serif;
+        line-height: 1.5;
+        color: #333;
+        background-color: white;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .word-document-preview h1 {
+        color: #2c3e50;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+
+    .word-document-preview h2 {
+        color: #3498db;
+        margin-top: 25px;
+        margin-bottom: 15px;
+    }
+
+    .word-document-preview h3 {
+        color: #2980b9;
+        margin-top: 20px;
+    }
+
+    .word-document-preview p {
+        margin-bottom: 15px;
+    }
+
+    .word-document-preview table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-bottom: 20px;
+    }
+
+    .word-document-preview th, 
+    .word-document-preview td {
+        border: 1px solid #ddd;
+        padding: 8px;
+    }
+
+    .word-document-preview th {
+        background-color: #f8f9fa;
+        font-weight: bold;
+        text-align: left;
+    }
+
+    .word-document-preview tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+
+    .word-document-preview tr:hover {
+        background-color: #f5f5f5;
+    }
+
+    .word-document-preview ul, 
+    .word-document-preview ol {
+        margin-bottom: 15px;
+    }
+
+    .word-document-preview img {
+        max-width: 100%;
+        height: auto;
+        margin: 15px 0;
+    }
+
+    /* Page break styling */
+    .page-break-marker {
+        position: relative;
+        border-top: 2px dashed #ff5722;
+        margin: 40px 0;
+        padding-top: 10px;
+        clear: both;
+    }
+
+    .page-break-marker::before {
+        content: '✂️';
+        position: absolute;
+        top: -13px;
+        left: -5px;
+        background: white;
+        padding: 0 10px;
+        font-size: 20px;
+    }
+
+    .page-number {
+        position: absolute;
+        top: -13px;
+        right: 20px;
+        background: #3498db;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-weight: bold;
+        font-size: 14px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    /* Print styles */
+    @media print {
+        .word-document-preview {
+            border: none;
+            box-shadow: none;
+            padding: 0;
+        }
+
+        .btn, header, footer {
+            display: none !important;
+        }
+
+        .page-break-marker {
+            page-break-before: always;
+            border-top: none;
+            margin: 0;
+        }
+
+        .page-break-marker::before,
+        .page-number {
+            display: none;
+        }
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle Word document download with alert
+    const wordDownloadBtn = document.getElementById('word-download-btn');
+    const excelDownloadBtn = document.getElementById('excel-download-btn');
+    const confirmDownloadBtn = document.getElementById('confirm-download-btn');
+
+    // Function to show the warning modal
+    function showWarningModal() {
+        try {
+            const modal = new bootstrap.Modal(document.getElementById('docAlertModal'));
+            modal.show();
+        } catch (error) {
+            console.error('Bootstrap Modal Error:', error);
+            if (confirm('ALERT! Please personalize the Executive Summary on page 2, and review the document in full before sending to the customer. Mike and John are watching 👀\n\nClick OK to download or Cancel to review further.')) {
+                window.location.href = confirmDownloadBtn.getAttribute('href');
+            }
+        }
+    }
+
+    // Word download button event
+    if (wordDownloadBtn) {
+        wordDownloadBtn.addEventListener('click', function(event) {
+            event.preventDefault();
+            showWarningModal();
+        });
+    }
+
+    // Excel download button event
+    if (excelDownloadBtn) {
+        excelDownloadBtn.addEventListener('click', function(event) {
+            event.preventDefault();
+            showWarningModal();
+        });
+    }
+
+    // Add the ability to jump to specific pages
+    const pageMarkers = document.querySelectorAll('.page-number');
+
+    if (pageMarkers.length > 0) {
+        // Create a page navigator
+        const nav = document.createElement('div');
+        nav.className = 'page-navigator';
+        nav.style.position = 'sticky';
+        nav.style.top = '20px';
+        nav.style.zIndex = '100';
+        nav.style.background = '#f8f9fa';
+        nav.style.padding = '10px';
+        nav.style.borderRadius = '4px';
+        nav.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+        nav.style.marginBottom = '20px';
+
+        const label = document.createElement('span');
+        label.textContent = 'Jump to page: ';
+        label.style.marginRight = '10px';
+        label.style.fontWeight = 'bold';
+        nav.appendChild(label);
+
+        pageMarkers.forEach((marker, index) => {
+            const pageNum = index + 2; // Page numbers start at 2 since page 1 is first
+            const button = document.createElement('a');
+            button.href = '#';
+            button.className = 'btn btn-sm btn-outline-primary m-1';
+            button.textContent = pageNum;
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                marker.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+            nav.appendChild(button);
+        });
+
+        // Insert at the top of the preview
+        const previewContainer = document.querySelector('.word-document-preview');
+        if (previewContainer) {
+            previewContainer.parentNode.insertBefore(nav, previewContainer);
+        }
+    }
+});
+</script>
+{% endblock %}
