@@ -57,6 +57,11 @@ def index():
     """Render the home page with file upload form"""
     return render_template('index.html')
 
+@app.route('/healthz')
+def healthz():
+    """Simple health check endpoint for container orchestrators and reverse proxies."""
+    return jsonify({"status": "ok"}), 200
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     """Handle file upload and processing"""
