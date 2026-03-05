@@ -1,0 +1,74 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-lock me-2"></i>Login</h4>
+            </div>
+
+            <div class="card-body">
+                <form action="{{ url_for('login') }}" method="post" autocomplete="off">
+
+                    <!-- ROLE SELECT -->
+                    <div class="mb-3">
+                        <label for="role" class="form-label">Login As</label>
+                        <select class="form-select" id="role" name="role" required>
+                            <option value="">Select role...</option>
+                            <option value="admin">Admin</option>
+                            <option value="user">User</option>
+                        </select>
+                    </div>
+
+                    <!-- PASSWORD FIELD -->
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+
+                        <div class="input-group">
+                            <input 
+                                type="password" 
+                                class="form-control" 
+                                id="password" 
+                                name="password" 
+                                required
+                                autocomplete="new-password">
+
+                            <span class="input-group-text" id="togglePassword" style="cursor:pointer;">
+                                <i class="fas fa-eye"></i>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- LOGIN BUTTON -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-sign-in-alt me-2"></i>Login
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+// Show / Hide password toggle
+document.getElementById("togglePassword").addEventListener("click", function() {
+    let input = document.getElementById("password");
+    let icon = this.querySelector("i");
+
+    if (input.type === "password") {
+        input.type = "text";
+        icon.classList.replace("fa-eye", "fa-eye-slash");
+    } else {
+        input.type = "password";
+        icon.classList.replace("fa-eye-slash", "fa-eye");
+    }
+});
+</script>
+
+{% endblock %}
+

@@ -13,7 +13,8 @@
                         <i class="fas fa-file-pdf"></i>
                     </div>
                     <h5>Convert PIH Pricing Proposals to Formatted Excel Sheets</h5>
-                    <p class="text-muted">Upload your pricing proposal PDF to automatically extract information and generate formatted cost sheets</p>
+                    <p class="text-muted">Upload your pricing proposal PDF to automatically extract information and
+                        generate formatted cost sheets</p>
                 </div>
 
                 {% if error %}
@@ -22,39 +23,43 @@
                 </div>
                 {% endif %}
 
-                <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" id="upload-form">
+                <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data"
+                    id="upload-form">
                     <div class="mb-4">
                         <div class="input-group mb-3">
-                            <input type="file" class="form-control" name="pdf_file" id="pdf_file" accept=".pdf" required>
+                            <input type="file" class="form-control" name="pdf_file" id="pdf_file"
+                                accept="application/pdf,.pdf" required>
                             <label class="input-group-text" for="pdf_file">
                                 <i class="fas fa-file-pdf me-2"></i>Choose PDF
                             </label>
                         </div>
                         <div class="form-text">Only PDF files are supported</div>
                     </div>
-                    
+
                     <div class="card mb-4">
                         <div class="card-header bg-info text-white">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="customInfoToggle" name="use_custom_info">
-                                <label class="form-check-label" for="customInfoToggle">Override PDF Information (Optional)</label>
-                            </div>
+                            <span>Override PDF Information</span>
                         </div>
-                        <div class="card-body" id="customInfoFields" style="display: none;">
+                        <!-- Always enabled: ensure the form posts use_custom_info=on -->
+                        <input type="hidden" name="use_custom_info" value="on">
+                        <div class="card-body" id="customInfoFields">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="customer_name" class="form-label">Customer Name</label>
-                                    <input type="text" class="form-control" id="customer_name" name="customer_name" placeholder="">
+                                    <input type="text" class="form-control" id="customer_name" name="customer_name"
+                                        placeholder="">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="location" class="form-label">Location</label>
-                                    <input type="text" class="form-control" id="location" name="location" placeholder="Hillsboro, OR">
+                                    <input type="text" class="form-control" id="location" name="location"
+                                        placeholder="Hillsboro, OR">
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="proposal_number" class="form-label">Proposal Number</label>
-                                    <input type="text" class="form-control" id="proposal_number" name="proposal_number" placeholder="00051890">
+                                    <input type="text" class="form-control" id="proposal_number" name="proposal_number"
+                                        placeholder="00051890">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="proposal_date" class="form-label">Proposal Date</label>
@@ -64,7 +69,8 @@
                             <div class="row">
                                 <div class="col-md-12 mb-3">
                                     <label for="model" class="form-label">Model</label>
-                                    <input type="text" class="form-control" id="model" name="model" placeholder="Modula ML25 Vertical Lift Module">
+                                    <input type="text" class="form-control" id="model" name="model"
+                                        placeholder="Modula ML25 Vertical Lift Module">
                                 </div>
                             </div>
                             <div class="row">
@@ -72,127 +78,147 @@
                                     <label class="form-label">VLM Model Image for Cover Page</label>
                                     <div id="vlm_image_gallery" class="row g-2 mb-3">
                                         <div class="col-md-4 col-sm-6">
-                                            <div class="vlm-image-option" data-vlm="vlm1.jpg">
-                                                <img src="/static/images/vlm_library/vlm1.jpg" class="img-fluid rounded border" alt="ML15 Compact">
+                                            <div class="vlm-image-option h-full w-full" data-vlm-id="vlm1">
+                                                <img src="/static/images/vlm-1.jpeg"
+                                                    class="img-fluid rounded border vlm-preview h-77 w-full" alt="VLM Model 1"
+                                                    id="vlm1-preview">
                                                 <div class="text-center mt-1">
-                                                    <small class="text-muted">ML15 Compact</small>
+                                                    <small class="text-muted">VLM Model 1</small>
                                                 </div>
                                             </div>
                                         </div>
                                         <div class="col-md-4 col-sm-6">
-                                            <div class="vlm-image-option" data-vlm="vlm2.jpg">
-                                                <img src="/static/images/vlm_library/vlm2.jpg" class="img-fluid rounded border" alt="ML25 Standard">
+                                            <div class="vlm-image-option h-full w-full" data-vlm-id="vlm2">
+                                                <img src="/static/images/vlm-2.jpeg"
+                                                    class="img-fluid rounded border vlm-preview h-77 w-full" alt="VLM Model 2"
+                                                    id="vlm2-preview">
                                                 <div class="text-center mt-1">
-                                                    <small class="text-muted">ML25 Standard</small>
+                                                    <small class="text-muted">VLM Model 2</small>
                                                 </div>
                                             </div>
                                         </div>
                                         <div class="col-md-4 col-sm-6">
-                                            <div class="vlm-image-option" data-vlm="vlm3.jpg">
-                                                <img src="/static/images/vlm_library/vlm3.jpg" class="img-fluid rounded border" alt="ML35 Extended">
+                                            <div class="vlm-image-option h-full w-full" data-vlm-id="vlm3">
+                                                <img src="/static/images/vlm-3.jpeg"
+                                                    class="img-fluid rounded border vlm-preview h-77 w-full" alt="VLM Model 3"
+                                                    id="vlm3-preview">
                                                 <div class="text-center mt-1">
-                                                    <small class="text-muted">ML35 Extended</small>
+                                                    <small class="text-muted">VLM Model 3</small>
                                                 </div>
                                             </div>
                                         </div>
                                         <div class="col-md-4 col-sm-6">
-                                            <div class="vlm-image-option" data-vlm="vlm4.jpg">
-                                                <img src="/static/images/vlm_library/vlm4.jpg" class="img-fluid rounded border" alt="ML50 Heavy Duty">
+                                            <div class="vlm-image-option h-full w-full" data-vlm-id="vlm4">
+                                                <img src="/static/images/vlm-4.jpeg"
+                                                    class="img-fluid rounded border vlm-preview h-77 w-full" alt="VLM Model 4"
+                                                    id="vlm4-preview">
                                                 <div class="text-center mt-1">
-                                                    <small class="text-muted">ML50 Heavy Duty</small>
+                                                    <small class="text-muted">VLM Model 4</small>
                                                 </div>
                                             </div>
                                         </div>
                                         <div class="col-md-4 col-sm-6">
-                                            <div class="vlm-image-option" data-vlm="vlm5.jpg">
-                                                <img src="/static/images/vlm_library/vlm5.jpg" class="img-fluid rounded border" alt="ML75 Industrial">
+                                            <div class="vlm-image-option h-full w-full" data-vlm-id="vlm5">
+                                                <img src="/static/images/vlm-5.jpeg"
+                                                    class="img-fluid rounded border vlm-preview h-77 w-full" alt="VLM Model 5"
+                                                    id="vlm5-preview">
                                                 <div class="text-center mt-1">
-                                                    <small class="text-muted">ML75 Industrial</small>
+                                                    <small class="text-muted">VLM Model 5</small>
                                                 </div>
                                             </div>
                                         </div>
                                         <div class="col-md-4 col-sm-6">
-                                            <div class="vlm-image-option" data-vlm="vlm6.jpg">
-                                                <img src="/static/images/vlm_library/vlm6.jpg" class="img-fluid rounded border" alt="ML100 Maximum">
+                                            <div class="vlm-image-option h-full w-full" data-vlm-id="vlm6">
+                                                <img src="/static/images/vlm machine.png"
+                                                    class="img-fluid rounded border vlm-preview h-77 w-full" alt="VLM Machine"
+                                                    id="vlm6-preview">
                                                 <div class="text-center mt-1">
-                                                    <small class="text-muted">ML100 Maximum</small>
+                                                    <small class="text-muted">VLM Machine</small>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                     <input type="hidden" id="selected_vlm_image" name="selected_vlm_image" value="">
-                                    <div class="form-text">Click on an image to select it for the cover page</div>
+                                    <div class="form-text">Click on an image to select for the cover page (Selection is
+                                        required)</div>
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="col-md-8 mb-3">
                                     <label for="customer_logo" class="form-label">Customer Logo (Optional)</label>
-                                    <input type="file" class="form-control" id="customer_logo" name="customer_logo" accept=".png,.jpg,.jpeg,.gif">
+                                    <input type="file" class="form-control" id="customer_logo" name="customer_logo"
+                                        accept="image/png,image/jpeg,image/jpg,image/gif">
                                     <div class="form-text">Company logo to include in the Word document</div>
                                 </div>
                                 <div class="col-md-4 mb-3 d-flex align-items-end">
                                     <div class="form-check mt-2">
-                                        <input class="form-check-input" type="checkbox" id="remove_logo_bg" name="remove_logo_bg">
+                                        <input class="form-check-input" type="checkbox" id="remove_logo_bg"
+                                            name="remove_logo_bg">
                                         <label class="form-check-label" for="remove_logo_bg">
                                             Remove Background
                                         </label>
                                     </div>
                                 </div>
-                            <div class="row">
-                                <div class="col-md-12 mb-3">
-                                    <label for="page_nine_image" class="form-label">Page Nine Cut Sheet Image (Optional)</label>
-                                    <input type="file" class="form-control" id="page_nine_image" name="page_nine_image" accept=".png,.jpg,.jpeg,.gif">
-                                    <div class="form-text">Image to include on page 9 of the document (leave blank to skip page 9)</div>
+                                <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        <h6 class="text-muted">Contact Information</h6>
+                                    </div>
+
+                                    <!-- 🔹 Contact fields (always visible) -->
+                                    <div id="contactInfoFields">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="salesperson_select" class="form-label">Select
+                                                    Salesperson</label>
+                                                <select class="form-select" id="salesperson_select"
+                                                    name="salesperson_select">
+                                                    <option value="">Choose a salesperson...</option>
+                                                    <option value="josh">Josh Jancola</option>
+                                                    <option value="noah">Noah Aldes</option>
+                                                    <option value="tyler">Tyler Rickard</option>
+                                                    <option value="ivan">Ivan Razo</option>
+                                                    <option value="matthew">Matthew Jimenez</option>
+                                                    <option value="mike">Mike Cleary</option>
+                                                    <option value="john">John Hollyoak</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="contact_phone" class="form-label">Contact Phone</label>
+                                                <input type="text" class="form-control" id="contact_phone"
+                                                    name="contact_phone" placeholder="253.500.4193">
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="contact_name" class="form-label">Contact Name</label>
+                                                <input type="text" class="form-control" id="contact_name"
+                                                    name="contact_name" placeholder="Josh Jancola">
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="contact_email" class="form-label">Contact Email</label>
+                                                <input type="email" class="form-control" id="contact_email"
+                                                    name="contact_email"
+                                                    placeholder="joshjancola@pacificintegrated.com">
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="contact_office" class="form-label">Office Phone</label>
+                                                <input type="text" class="form-control" id="contact_office"
+                                                    name="contact_office" value="888.550.5888">
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-12 mb-3">
-                                    <h6 class="text-muted">Contact Information</h6>
+
+
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                                        <i class="fas fa-cogs me-2"></i>Process PDF
+                                    </button>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="salesperson_select" class="form-label">Select Salesperson</label>
-                                    <select class="form-select" id="salesperson_select" name="salesperson_select">
-                                        <option value="">Choose a salesperson...</option>
-                                        <option value="josh">Josh Jancola</option>
-                                        <option value="noah">Noah Aldes</option>
-                                        <option value="tyler">Tyler Rickard</option>
-                                        <option value="ivan">Ivan Razo</option>
-                                        <option value="matthew">Matthew Jimenez</option>
-                                        <option value="mike">Mike Cleary</option>
-                                        <option value="john">John Hollyoak</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="contact_phone" class="form-label">Contact Phone</label>
-                                    <input type="text" class="form-control" id="contact_phone" name="contact_phone" placeholder="253.500.4193" readonly>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="contact_name" class="form-label">Contact Name</label>
-                                    <input type="text" class="form-control" id="contact_name" name="contact_name" placeholder="Josh Jancola" readonly>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="contact_email" class="form-label">Contact Email</label>
-                                    <input type="email" class="form-control" id="contact_email" name="contact_email" placeholder="joshjancola@pacificintegrated.com" readonly>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="contact_office" class="form-label">Office Phone</label>
-                                    <input type="text" class="form-control" id="contact_office" name="contact_office" value="888.550.5888" readonly>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
-                            <i class="fas fa-cogs me-2"></i>Process PDF
-                        </button>
-                    </div>
                 </form>
-                
+
                 <script>
                     // Salesperson contact information
                     const salespeople = {
@@ -233,13 +259,72 @@
                         }
                     };
 
-                    // Toggle custom info fields visibility
-                    document.getElementById('customInfoToggle').addEventListener('change', function() {
-                        document.getElementById('customInfoFields').style.display = this.checked ? 'block' : 'none';
+                    // Custom info fields are always visible; toggle removed
+
+                    // PDF file validation
+                    document.getElementById('pdf_file').addEventListener('change', function (e) {
+                        const file = this.files[0];
+                        if (file) {
+                            // Check file extension
+                            const fileName = file.name.toLowerCase();
+                            if (!fileName.endsWith('.pdf')) {
+                                alert('Invalid file type. Only PDF files are allowed.');
+                                this.value = ''; // Clear the file input
+                                return;
+                            }
+
+                            // Check MIME type
+                            if (file.type !== 'application/pdf') {
+                                alert('Invalid file type. File is not recognized as a PDF.');
+                                this.value = ''; // Clear the file input
+                                return;
+                            }
+
+                            // Optional: Check file size (16MB max as per backend)
+                            const maxSize = 16 * 1024 * 1024; // 16MB in bytes
+                            if (file.size > maxSize) {
+                                alert('File is too large. Maximum file size is 16MB.');
+                                this.value = ''; // Clear the file input
+                                return;
+                            }
+                        }
+                    });
+
+                    // Customer logo validation
+                    document.getElementById('customer_logo').addEventListener('change', function (e) {
+                        const file = this.files[0];
+                        if (file) {
+                            // Check file extension
+                            const fileName = file.name.toLowerCase();
+                            const validExtensions = ['.png', '.jpg', '.jpeg', '.gif'];
+                            const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+
+                            if (!hasValidExtension) {
+                                alert('Invalid file type. Only image files (PNG, JPEG, JPG, GIF) are allowed for customer logo.');
+                                this.value = ''; // Clear the file input
+                                return;
+                            }
+
+                            // Check MIME type
+                            const validMimeTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+                            if (!validMimeTypes.includes(file.type)) {
+                                alert('Invalid file type. File is not recognized as a valid image.');
+                                this.value = ''; // Clear the file input
+                                return;
+                            }
+
+                            // Optional: Check file size (16MB max)
+                            const maxSize = 16 * 1024 * 1024; // 16MB in bytes
+                            if (file.size > maxSize) {
+                                alert('Image file is too large. Maximum file size is 16MB.');
+                                this.value = ''; // Clear the file input
+                                return;
+                            }
+                        }
                     });
 
                     // Handle salesperson selection
-                    document.getElementById('salesperson_select').addEventListener('change', function() {
+                    document.getElementById('salesperson_select').addEventListener('change', function () {
                         const selectedSalesperson = this.value;
                         const contactNameField = document.getElementById('contact_name');
                         const contactEmailField = document.getElementById('contact_email');
@@ -259,75 +344,83 @@
                     });
 
                     // Handle VLM image selection
-                    document.querySelectorAll('.vlm-image-option').forEach(function(option) {
-                        option.addEventListener('click', function() {
+                    document.querySelectorAll('.vlm-image-option').forEach(function (option) {
+                        const img = option.querySelector('.vlm-preview');
+
+                        // Click on image to select it
+                        img.addEventListener('click', function (e) {
+                            e.stopPropagation();
+
                             // Remove selection from all options
-                            document.querySelectorAll('.vlm-image-option').forEach(function(opt) {
+                            document.querySelectorAll('.vlm-image-option').forEach(function (opt) {
                                 opt.classList.remove('selected');
-                                opt.querySelector('img').style.filter = 'blur(2px) opacity(0.6)';
+                                opt.querySelector('.vlm-preview').style.filter = 'blur(2px) opacity(0.6)';
                             });
-                            
+
                             // Select this option
-                            this.classList.add('selected');
-                            this.querySelector('img').style.filter = 'none';
-                            
-                            // Set the hidden input value
-                            document.getElementById('selected_vlm_image').value = this.dataset.vlm;
+                            option.classList.add('selected');
+                            img.style.filter = 'none';
+
+                            // Set the hidden input value to the VLM ID
+                            document.getElementById('selected_vlm_image').value = option.dataset.vlmId;
                         });
                     });
 
+
+
                     // Initialize VLM images with blur effect (none selected initially)
-                    document.querySelectorAll('.vlm-image-option img').forEach(function(img) {
+                    document.querySelectorAll('.vlm-preview').forEach(function (img) {
                         img.style.filter = 'blur(2px) opacity(0.6)';
                         img.style.transition = 'filter 0.3s ease';
+                        img.style.cursor = 'pointer';
                     });
                 </script>
             </div>
         </div>
 
         <div class="card mt-4 shadow">
-        <div class="card-header bg-secondary text-white">
-            <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>How It Works</h5>
-        </div>
-        <div class="card-body">
-            <div class="d-flex justify-content-between text-center">
-                <div style="width: 20%;">
-                    <div class="display-6 text-primary mb-1" style="font-size: 2rem;">
-                        <i class="fas fa-upload"></i>
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>How It Works</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between text-center">
+                    <div style="width: 20%;">
+                        <div class="display-6 text-primary mb-1" style="font-size: 2rem;">
+                            <i class="fas fa-upload"></i>
+                        </div>
+                        <h6 style="font-size: 1rem;">Upload</h6>
+                        <p class="text-muted" style="font-size: 0.85rem;">Upload your Pricing Proposal PDF</p>
                     </div>
-                    <h6 style="font-size: 1rem;">Upload</h6>
-                    <p class="text-muted" style="font-size: 0.85rem;">Upload your Pricing Proposal PDF</p>
-                </div>
-                <div style="width: 20%;">
-                    <div class="display-6 text-primary mb-1" style="font-size: 2rem;">
-                        <i class="fas fa-magic"></i>
+                    <div style="width: 20%;">
+                        <div class="display-6 text-primary mb-1" style="font-size: 2rem;">
+                            <i class="fas fa-magic"></i>
+                        </div>
+                        <h6 style="font-size: 1rem;">Extract</h6>
+                        <p class="text-muted" style="font-size: 0.85rem;">System extracts data from PDF</p>
                     </div>
-                    <h6 style="font-size: 1rem;">Extract</h6>
-                    <p class="text-muted" style="font-size: 0.85rem;">System extracts data from PDF</p>
-                </div>
-                <div style="width: 20%;">
-                    <div class="display-6 text-primary mb-1" style="font-size: 2rem;">
-                        <i class="fas fa-edit"></i>
+                    <div style="width: 20%;">
+                        <div class="display-6 text-primary mb-1" style="font-size: 2rem;">
+                            <i class="fas fa-edit"></i>
+                        </div>
+                        <h6 style="font-size: 1rem;">Review</h6>
+                        <p class="text-muted" style="font-size: 0.85rem;">Edit prices and line items</p>
                     </div>
-                    <h6 style="font-size: 1rem;">Review</h6>
-                    <p class="text-muted" style="font-size: 0.85rem;">Edit prices and line items</p>
-                </div>
-                <div style="width: 20%;">
-                    <div class="display-6 text-primary mb-1" style="font-size: 2rem;">
-                        <i class="fas fa-upload"></i>
+                    <div style="width: 20%;">
+                        <div class="display-6 text-primary mb-1" style="font-size: 2rem;">
+                            <i class="fas fa-upload"></i>
+                        </div>
+                        <h6 style="font-size: 1rem;">Reupload</h6>
+                        <p class="text-muted" style="font-size: 0.85rem;">Upload updated cost sheet</p>
                     </div>
-                    <h6 style="font-size: 1rem;">Reupload</h6>
-                    <p class="text-muted" style="font-size: 0.85rem;">Upload updated cost sheet</p>
-                </div>
-                <div style="width: 20%;">
-                    <div class="display-6 text-primary mb-1" style="font-size: 2rem;">
-                        <i class="fas fa-download"></i>
+                    <div style="width: 20%;">
+                        <div class="display-6 text-primary mb-1" style="font-size: 2rem;">
+                            <i class="fas fa-download"></i>
+                        </div>
+                        <h6 style="font-size: 1rem;">Download</h6>
+                        <p class="text-muted" style="font-size: 0.85rem;">Get Excel and Word files</p>
                     </div>
-                    <h6 style="font-size: 1rem;">Download</h6>
-                    <p class="text-muted" style="font-size: 0.85rem;">Get Excel and Word files</p>
                 </div>
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
+    {% endblock %}

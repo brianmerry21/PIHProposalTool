@@ -3,11 +3,16 @@ import os
 import re
 import uuid
 from datetime import datetime
+from functools import wraps
 from utils.pdf_append import append_marketing_pdf
 
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, session
 from werkzeug.utils import secure_filename
 from sqlalchemy import desc
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Import database models
 from models import PDFExtraction, LineItem, db
@@ -44,6 +49,41 @@ db.init_app(app)
 # Set a secret key for sessions (in a production environment, this should be a secure value)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev_secret_key")
 
+# Load passwords from environment variables
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
+USER_PASSWORD = os.environ.get("USER_PASSWORD", "user123")
+
+# Authentication decorators
+def login_required(f):
+    """Decorator to require login for a route"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_role' not in session:
+            flash('Please login to access this page', 'warning')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    """Decorator to require admin role for a route"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_role' not in session or session.get('user_role') != 'admin':
+            flash('Admin access required', 'danger')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def user_required(f):
+    """Decorator to require user role for a route"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_role' not in session or session.get('user_role') != 'user':
+            flash('User access required', 'danger')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 def allowed_file(filename):
     """Check if a filename has an allowed extension for document uploads"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -54,66 +94,352 @@ def allowed_image_file(filename):
 
 @app.route('/')
 def index():
-    """Render the home page with file upload form"""
+    """Redirect to login if not authenticated, or show appropriate page based on role"""
+    if 'user_role' not in session:
+        return redirect(url_for('login'))
+    
+    # If admin, redirect to admin panel
+    if session.get('user_role') == 'admin':
+        return redirect(url_for('admin_panel'))
+    
+    # If user, show the PDF upload page
     return render_template('index.html')
 
-@app.route('/healthz')
-def healthz():
-    """Simple health check endpoint for container orchestrators and reverse proxies."""
-    return jsonify({"status": "ok"}), 200
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Handle user login"""
+    if request.method == 'POST':
+        role = request.form.get('role')
+        password = request.form.get('password')
+        
+        if not role or not password:
+            flash('Please fill in all fields', 'danger')
+            return render_template(
+                'login.html',
+                admin_password=ADMIN_PASSWORD,
+                user_password=USER_PASSWORD
+            )
+        
+        # Validate credentials
+        if role == 'admin' and password == ADMIN_PASSWORD:
+            session['user_role'] = 'admin'
+            flash('Welcome, Admin!', 'success')
+            return redirect(url_for('admin_panel'))
+        
+        elif role == 'user' and password == USER_PASSWORD:
+            session['user_role'] = 'user'
+            flash('Welcome!', 'success')
+            return redirect(url_for('index'))
+        
+        else:
+            flash('Invalid credentials', 'danger')
+            return render_template(
+                'login.html',
+                admin_password=ADMIN_PASSWORD,
+                user_password=USER_PASSWORD
+            )
+
+    # If user is already logged in
+    if 'user_role' in session:
+        if session.get('user_role') == 'admin':
+            return redirect(url_for('admin_panel'))
+        else:
+            return redirect(url_for('index'))
+
+    # GET request -> always provide passwords for autofill
+    return render_template(
+        'login.html',
+        admin_password=ADMIN_PASSWORD,
+        user_password=USER_PASSWORD
+    )
+
+
+@app.route('/logout')
+def logout():
+    """Handle user logout"""
+    session.clear()
+    flash('You have been logged out', 'info')
+    return redirect(url_for('login'))
+
+@app.route('/admin')
+@admin_required
+def admin_panel():
+    """Admin panel for changing user password"""
+    return render_template('admin.html')
+
+@app.route('/change_user_password', methods=['POST'])
+@admin_required
+def change_user_password():
+    """Allow admin to change user password"""
+    new_password = request.form.get('new_password')
+    confirm_password = request.form.get('confirm_password')
+    
+    if not new_password or not confirm_password:
+        flash('Please fill in all fields', 'danger')
+        return redirect(url_for('admin_panel'))
+    
+    if new_password != confirm_password:
+        flash('Passwords do not match', 'danger')
+        return redirect(url_for('admin_panel'))
+    
+    if len(new_password) < 3:
+        flash('Password must be at least 3 characters long', 'danger')
+        return redirect(url_for('admin_panel'))
+    
+    # Update the user password in environment (for this session)
+    global USER_PASSWORD
+    USER_PASSWORD = new_password
+    
+    # Update environment variable (this will be lost on restart, but works for current session)
+    os.environ['USER_PASSWORD'] = new_password
+    
+    # Update .env file to persist the password change
+    env_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+    try:
+        # Read existing .env file
+        env_lines = []
+        if os.path.exists(env_file_path):
+            with open(env_file_path, 'r') as f:
+                env_lines = f.readlines()
+        
+        # Update or add USER_PASSWORD line
+        updated = False
+        for i, line in enumerate(env_lines):
+            if line.strip().startswith('USER_PASSWORD='):
+                env_lines[i] = f'USER_PASSWORD={new_password}\n'
+                updated = True
+                break
+        
+        if not updated:
+            # Add new line if it doesn't exist
+            env_lines.append(f'USER_PASSWORD={new_password}\n')
+        
+        # Write back to .env file
+        with open(env_file_path, 'w') as f:
+            f.writelines(env_lines)
+        
+        logger.info(f"User password updated in .env file")
+    except Exception as e:
+        logger.warning(f"Could not update .env file: {e}. Password change will only persist for current session.")
+    
+    flash('User password updated successfully!', 'success')
+    return redirect(url_for('admin_panel'))
 
 @app.route('/upload', methods=['POST'])
+@user_required
 def upload_file():
     """Handle file upload and processing"""
-    # Check if the POST request has a file part
     if 'pdf_file' not in request.files:
         flash('No file part in the request', 'danger')
         return redirect(url_for('index'))
 
     file = request.files['pdf_file']
 
-    # If no file was selected (empty filename)
     if file.filename == '':
         flash('No file selected', 'danger')
         return redirect(url_for('index'))
 
-    # If the file has an allowed extension
+    # ---- PDF VALIDATION ----
+    # 1. Check file extension
+    if not file.filename.lower().endswith('.pdf'):
+        flash('Invalid file type. Only PDF files are allowed.', 'danger')
+        return redirect(url_for('index'))
+
+    # 2. Check MIME type (extra safety)
+    if file.mimetype not in ['application/pdf']:
+        flash('Invalid file type. File is not recognized as a PDF.', 'danger')
+        return redirect(url_for('index'))
+
+    # 3. Optional: Validate magic bytes (BEST security)
+    header = file.read(4)
+    file.seek(0)  # Reset pointer after reading
+
+    if header != b'%PDF':
+        flash('Invalid file content. File is not a valid PDF.', 'danger')
+        return redirect(url_for('index'))
+
     if file and allowed_file(file.filename):
-        # Secure the filename and create a unique filename for storage
         filename = secure_filename(file.filename)
         filename_base = str(uuid.uuid4())
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename_base}.pdf")
 
-        # Process any uploaded logo or other images
+        # Process uploaded logo
         logo_path = None
         if 'customer_logo' in request.files and request.files['customer_logo'].filename:
             logo_file = request.files['customer_logo']
-            if allowed_image_file(logo_file.filename):
-                logo_filename = secure_filename(logo_file.filename)
-                logo_path = os.path.join(app.config['UPLOAD_FOLDER'], f"logo_{filename_base}_{logo_filename}")
-                try:
-                    logo_file.save(logo_path)
-                    logger.info(f"Logo saved at {logo_path}")
-                except Exception as le:
-                    logger.error(f"Error saving logo: {str(le)}")
-                    logo_path = None
+            
+            # Validate image file
+            if not allowed_image_file(logo_file.filename):
+                flash('Invalid file type for customer logo. Only PNG, JPEG, JPG, and GIF files are allowed.', 'danger')
+                return redirect(url_for('index'))
+            
+            # Validate MIME type
+            valid_mime_types = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif']
+            if logo_file.mimetype not in valid_mime_types:
+                flash('Invalid file type for customer logo. File is not recognized as a valid image.', 'danger')
+                return redirect(url_for('index'))
+            
+            # Save the logo
+            logo_filename = secure_filename(logo_file.filename)
+            logo_path = os.path.join(app.config['UPLOAD_FOLDER'], f"logo_{filename_base}_{logo_filename}")
+            try:
+                logo_file.save(logo_path)
+                logger.info(f"Logo saved at {logo_path}")
+            except Exception as le:
+                logger.error(f"Error saving logo: {str(le)}")
+                logo_path = None
+                flash(f"Error saving customer logo: {str(le)}", 'warning')
 
-        # Handle VLM image selection
-        selected_vlm_image = request.form.get('selected_vlm_image', '')
+        # Handle VLM image - check for custom uploads for each VLM section
+        selected_vlm_id = request.form.get('selected_vlm_image', '')
         vlm_image_path = None
-        if selected_vlm_image:
-            vlm_image_path = os.path.join('static/images/vlm_library', selected_vlm_image)
-            if not os.path.exists(vlm_image_path):
-                vlm_image_path = None
+        
+        # If no custom image was uploaded, use the selected library image
+        if selected_vlm_id:
+            # Map vlm IDs to filenames found in static/images
+            vlm_library_map = {
+                'vlm1': 'vlm-1.jpeg',
+                'vlm2': 'vlm-2.jpeg',
+                'vlm3': 'vlm-3.jpeg',
+                'vlm4': 'vlm-4.jpeg',
+                'vlm5': 'vlm-5.jpeg',
+                'vlm6': 'vlm machine.png'
+            }
+            
+            vlm_filename = vlm_library_map.get(selected_vlm_id)
+            if vlm_filename:
+                # Use absolute path to check existence, but store relative path for DB
+                static_folder = os.path.join(app.root_path, 'static', 'images')
+                vlm_full_path = os.path.join(static_folder, vlm_filename)
+                
+                if os.path.exists(vlm_full_path):
+                     vlm_image_path = os.path.join('static', 'images', vlm_filename)
+                else:
+                    logger.warning(f"Selected VLM image not found at {vlm_full_path}")
+                    vlm_image_path = None
 
-        try:
-            # Save the uploaded file
+        #  Handle predefined salesperson info OR custom contact info
+       #  Always handle predefined salesperson info (even if use_custom_info is off)
+        selected_salesperson = request.form.get('salesperson_select')
+        print(f"🔹 Selected salesperson: {selected_salesperson}")
+
+        # 🔹 Define all predefined salesperson info
+        salesperson_map = {
+            'josh': {
+                'contact_name': 'Josh Jancola',
+                'contact_email': 'joshjancola@pacificintegrated.com',
+                'contact_phone': '253.500.4193',
+                'contact_office': '888.550.5888',
+            },
+            'noah': {
+                'contact_name': 'Noah Aldes',
+                'contact_email': 'naldes@pacificintegrated.com',
+                'contact_phone': '408-834-2376',
+                'contact_office': '888.550.5888',
+            },
+            'tyler': {
+                'contact_name': 'Tyler Rickard',
+                'contact_email': 'trickard@pacificintegrated.com',
+                'contact_phone': '669-315-1009',
+                'contact_office': '888.550.5888',
+            },
+            'ivan': {
+                'contact_name': 'Ivan Razo',
+                'contact_email': 'irazo@pacificintegrated.com',
+                'contact_phone': '408-992-5804',
+                'contact_office': '888.550.5888',
+            },
+            'matthew': {
+                'contact_name': 'Matthew Jimenez',
+                'contact_email': 'mjimenez@pacificintegrated.com',
+                'contact_phone': '602-869-1528',
+                'contact_office': '888.550.5888',
+            },
+            'mike': {
+                'contact_name': 'Mike Cleary',
+                'contact_email': 'mcleary@pacificintegrated.com',
+                'contact_phone': '602-869-3323',
+                'contact_office': '888.550.5888',
+            },
+            'john': {
+                'contact_name': 'John Hollyoak',
+                'contact_email': 'jhollyoak@pacificintegrated.com',
+                'contact_phone': '253-548-5294',
+                'contact_office': '888.550.5888',
+            },
+        }
+
+        # 🔹 Use predefined salesperson if selected, otherwise fallback to manual inputs
+        # Allow manual fields to override predefined values if provided
+        if selected_salesperson and selected_salesperson in salesperson_map:
+            contact_info_temp = salesperson_map[selected_salesperson].copy()
+            print(f" Using predefined contact info for {selected_salesperson}")
+        else:
+            contact_info_temp = {}
+        
+        # Allow manual inputs to override or supplement predefined values
+        manual_name = request.form.get('contact_name', '').strip()
+        manual_email = request.form.get('contact_email', '').strip()
+        manual_phone = request.form.get('contact_phone', '').strip()
+        manual_office = request.form.get('contact_office', '').strip()
+        
+        # Override with manual values if provided
+        if manual_name:
+            contact_info_temp['contact_name'] = manual_name
+        if manual_email:
+            contact_info_temp['contact_email'] = manual_email
+        if manual_phone:
+            contact_info_temp['contact_phone'] = manual_phone
+        if manual_office:
+            contact_info_temp['contact_office'] = manual_office
+        
+        # If no contact info at all, use Josh Jancola as default
+        if not contact_info_temp:
+            contact_info_temp = {
+                'contact_name': 'Josh Jancola',
+                'contact_email': 'joshjancola@pacificintegrated.com',
+                'contact_phone': '253.500.4193',
+                'contact_office': '888.550.5888',
+            }
+            print("Using default contact info (Josh Jancola)")
+        else:
+            print(f" Contact info captured: {contact_info_temp}")
+
+    # 🔹 Store in session for later use
+    session[f'contact_by_base_{filename_base}'] = contact_info_temp
+    print(f" Stored contact info with key: contact_by_base_{filename_base}")
+
+        # 🔹 Print full contact details in a clean format
+    print(f"""
+    --------------------------------------------
+        CONTACT DETAILS
+        Name   : {contact_info_temp.get('contact_name') or 'N/A'}
+        Email  : {contact_info_temp.get('contact_email') or 'N/A'}
+        Phone  : {contact_info_temp.get('contact_phone') or 'N/A'}
+    Office : {contact_info_temp.get('contact_office') or 'N/A'}
+    --------------------------------------------
+    """)
+
+
+        # ✅ Capture optional override fields (for other fields like customer name, etc.)
+    if request.form.get('use_custom_info') == 'on':
+            overrides_temp = {
+                'customer_name': request.form.get('customer_name') or None,
+                'location': request.form.get('location') or None,
+                'proposal_number': request.form.get('proposal_number') or None,
+                'proposal_date': request.form.get('proposal_date') or None,
+                'model': request.form.get('model') or None,
+            }
+            session[f'overrides_by_base_{filename_base}'] = overrides_temp
+            print(f"💾 Stored overrides info with key: overrides_by_base_{filename_base}")
+
+    try:
             file.save(file_path)
             logger.info(f"File saved at {file_path}")
 
-            # Immediately extract data and go to preview/edit
+            # Proceed to extraction and preview
             return extract_and_preview(filename_base, logo_path, vlm_image_path)
-        except Exception as e:
+    except Exception as e:
             logger.error(f"Error processing upload: {str(e)}")
             flash(f"Error processing file: {str(e)}", 'danger')
             return redirect(url_for('index'))
@@ -121,7 +447,9 @@ def upload_file():
         flash('File type not allowed. Please upload a PDF file.', 'danger')
         return redirect(url_for('index'))
 
+
 @app.route('/extract/<filename_base>')
+@user_required
 def extract_and_preview(filename_base, logo_path=None, vlm_image_path=None):
     """Extract data from PDF and show preview for user editing"""
     try:
@@ -142,7 +470,8 @@ def extract_and_preview(filename_base, logo_path=None, vlm_image_path=None):
             filename=os.path.basename(pdf_path),
             upload_date=datetime.utcnow(),
             original_path=pdf_path,
-            logo_path=logo_path  # Save logo path from parameter
+            logo_path=logo_path,  # Save logo path from parameter
+            vlm_image_path=vlm_image_path  # Save VLM image path from parameter
         )
         # Note: excel_path will be set later when cost sheet is generated
 
@@ -278,6 +607,24 @@ def extract_and_preview(filename_base, logo_path=None, vlm_image_path=None):
         extraction.installation_price = 0.0  # Included in base price (no separate charge)
         extraction.seismic_price = 0.0  # Included in base price (no separate charge)
         extraction.freight_price = 0.0  # Included in base price (no separate charge)
+
+        # Apply homepage overrides (if any were provided in the upload form)
+        try:
+            overrides_temp = session.get(f'overrides_by_base_{filename_base}', {}) or {}
+            if overrides_temp.get('customer_name'):
+                extraction.customer_name = overrides_temp['customer_name']
+            if overrides_temp.get('location'):
+                extraction.location = overrides_temp['location']
+            if overrides_temp.get('proposal_number'):
+                extraction.proposal_number = overrides_temp['proposal_number']
+            if overrides_temp.get('proposal_date'):
+                extraction.proposal_date = overrides_temp['proposal_date']
+            if overrides_temp.get('model'):
+                extraction.vlm_model = overrides_temp['model']
+            # Clear the temp store once applied
+            session.pop(f'overrides_by_base_{filename_base}', None)
+        except Exception as _e:
+            logger.warning("Could not apply overrides from upload form")
 
         # Add the extraction record to the database
         db.session.add(extraction)
@@ -585,6 +932,23 @@ def extract_and_preview(filename_base, logo_path=None, vlm_image_path=None):
         # Save all changes to the database
         db.session.commit()
 
+        # Move contact info from temporary session storage (by base) to extraction-id keyed storage
+        try:
+            temp_key = f'contact_by_base_{filename_base}'
+            contact_info_temp = session.get(temp_key, {}) or {}
+            if contact_info_temp:
+                session[f'contact_info_{extraction.id}'] = contact_info_temp
+                session.pop(temp_key, None)
+        except Exception as _e:
+            logger.warning("Could not bind contact info to extraction id")
+
+        # Persist selected VLM image for later cover rendering (optional future use)
+        try:
+            if vlm_image_path:
+                session[f'cover_image_{extraction.id}'] = vlm_image_path
+        except Exception:
+            pass
+
         # Redirect to review page
         return redirect(url_for('review_extraction', extraction_id=extraction.id))
 
@@ -594,6 +958,7 @@ def extract_and_preview(filename_base, logo_path=None, vlm_image_path=None):
         return redirect(url_for('index'))
 
 @app.route('/review/<int:extraction_id>')
+@user_required
 def review_extraction(extraction_id):
     """Show the extracted data for review and editing"""
     try:
@@ -652,6 +1017,7 @@ def review_extraction(extraction_id):
         return redirect(url_for('index'))
 
 @app.route('/update_recommended/<int:item_id>', methods=['POST'])
+@user_required
 def update_recommended(item_id):
     """Update the recommended status of an optional item"""
     try:
@@ -666,6 +1032,7 @@ def update_recommended(item_id):
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/update_item/<int:item_id>', methods=['POST'])
+@user_required
 def update_item(item_id):
     """Update a line item based on user edits"""
     try:
@@ -778,6 +1145,7 @@ def update_item(item_id):
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/process/<int:extraction_id>', methods=['POST'])
+@user_required
 def process_extraction(extraction_id):
     """Process the reviewed extraction to generate Word and Excel files"""
     try:
@@ -821,6 +1189,13 @@ def process_extraction(extraction_id):
             'tray_height': extraction.tray_height or 'N/A',
             'total_price': total_price,
             'logo_path': extraction.logo_path,  # Add logo path to customer info
+            # Include selected VLM cover image if user chose one on the upload form
+            'vlm_image_path': session.get(f'cover_image_{extraction.id}'),
+            # Salesperson/contact info from the first page (default to Josh Jancola if not provided)
+            'contact_name': (session.get(f'contact_info_{extraction.id}', {}) or {}).get('contact_name') or 'Josh Jancola',
+            'contact_email': (session.get(f'contact_info_{extraction.id}', {}) or {}).get('contact_email') or 'joshjancola@pacificintegrated.com',
+            'contact_phone': (session.get(f'contact_info_{extraction.id}', {}) or {}).get('contact_phone') or '253.500.4193',
+            'contact_office': (session.get(f'contact_info_{extraction.id}', {}) or {}).get('contact_office') or '888.550.5888',
             'line_items': [
                 {
                     'category': item.category or '',
@@ -856,6 +1231,26 @@ def process_extraction(extraction_id):
         template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'attached_assets', 'CostSheetTemplate.xlsx')
 
         # Process to Excel and Word
+
+        # --- Merge Contact Info Override (use extraction_id key) ---
+        # Contact info should already be in customer_info from lines 942-945,
+        # but we'll also check the extraction_id key to ensure it's properly set
+        contact_override = session.get(f'contact_info_{extraction.id}')
+        if contact_override:
+            print(f"✅ Overriding contact info for extraction {extraction.id}: {contact_override}")
+            # Only update if values are actually provided (not None or empty)
+            if contact_override.get('contact_name'):
+                customer_info['contact_name'] = contact_override.get('contact_name')
+            if contact_override.get('contact_email'):
+                customer_info['contact_email'] = contact_override.get('contact_email')
+            if contact_override.get('contact_phone'):
+                customer_info['contact_phone'] = contact_override.get('contact_phone')
+            if contact_override.get('contact_office'):
+                customer_info['contact_office'] = contact_override.get('contact_office')
+            print(f"✅ Final contact info: Name={customer_info.get('contact_name')}, Email={customer_info.get('contact_email')}, Phone={customer_info.get('contact_phone')}")
+        else:
+            print(f"⚠️ No contact override found for extraction {extraction.id}, using extracted/default contact info.")
+
         process_pdf_to_excel(extraction.original_path, excel_path, template_path, customer_info=customer_info)
         process_pdf_to_word(extraction.original_path, word_path, customer_info=customer_info)
 
@@ -880,6 +1275,7 @@ def process_extraction(extraction_id):
         return redirect(url_for('review_extraction', extraction_id=extraction_id))
 
 @app.route('/preview/<file_type>/<filename_base>')
+@user_required
 def preview_file(file_type, filename_base):
     """Handle file previews for generated Excel and Word files"""
     try:
@@ -960,6 +1356,7 @@ def preview_file(file_type, filename_base):
         return redirect(url_for('index'))
 
 @app.route('/download/<file_type>/<filename_base>')
+@user_required
 def download_file(file_type, filename_base):
     """Handle file downloads for generated Excel and Word files"""
     try:
@@ -978,6 +1375,7 @@ def download_file(file_type, filename_base):
         return redirect(url_for('index'))
 
 @app.route('/download_cost_sheet/<int:extraction_id>')
+@user_required
 def download_cost_sheet(extraction_id):
     """Download the cost sheet (Excel) for the extraction"""
     try:
@@ -1012,6 +1410,13 @@ def download_cost_sheet(extraction_id):
             'tray_height': extraction.tray_height or 'N/A',
             'total_price': total_price,
             'logo_path': extraction.logo_path,
+            # Include selected VLM cover image if user chose one on the upload form
+            'vlm_image_path': session.get(f'cover_image_{extraction.id}'),
+            # Salesperson/contact info persisted in session (default to Josh Jancola if not provided)
+            'contact_name': (session.get(f'contact_info_{extraction.id}', {}) or {}).get('contact_name') or 'Josh Jancola',
+            'contact_email': (session.get(f'contact_info_{extraction.id}', {}) or {}).get('contact_email') or 'joshjancola@pacificintegrated.com',
+            'contact_phone': (session.get(f'contact_info_{extraction.id}', {}) or {}).get('contact_phone') or '253.500.4193',
+            'contact_office': (session.get(f'contact_info_{extraction.id}', {}) or {}).get('contact_office') or '888.550.5888',
             'line_items': [
                 {
                     'category': item.category or '',
@@ -1066,6 +1471,7 @@ def download_cost_sheet(extraction_id):
         return redirect(url_for('review_extraction', extraction_id=extraction_id))
 
 @app.route('/download_cost_sheet_file/<int:extraction_id>')
+@user_required
 def download_cost_sheet_file(extraction_id):
     """Download the generated cost sheet Excel file"""
     try:
@@ -1095,6 +1501,7 @@ def download_cost_sheet_file(extraction_id):
         return redirect(url_for('cost_sheet_reupload', extraction_id=extraction_id))
 
 @app.route('/cost_sheet_reupload/<int:extraction_id>')
+@user_required
 def cost_sheet_reupload(extraction_id):
     """Show the cost sheet reupload page"""
     try:
@@ -1106,47 +1513,78 @@ def cost_sheet_reupload(extraction_id):
         return redirect(url_for('index'))
 
 @app.route('/reupload_cost_sheet/<int:extraction_id>', methods=['POST'])
+@user_required
 def reupload_cost_sheet(extraction_id):
     """Handle cost sheet reupload and process with both PDF and Excel data"""
     try:
         extraction = PDFExtraction.query.get_or_404(extraction_id)
-        
-        # Check if the POST request has a file part
+
+        #  Try to get the same filename_base (so we can retrieve overrides)
+        filename_base = getattr(extraction, 'filename_base', None)
+        if not filename_base:
+            logger.warning("⚠️ No filename_base found on extraction object — using extraction_id instead.")
+            filename_base = str(extraction_id)
+
+        # Try to pull contact info + overrides stored in session
+        contact_info_temp = session.get(f'contact_by_base_{filename_base}')
+        overrides_temp = session.get(f'overrides_by_base_{filename_base}')
+
+        if contact_info_temp:
+            logger.info(f" Loaded contact info override from session: {contact_info_temp}")
+        else:
+            logger.warning(f" No contact info override found for base: {filename_base}")
+
+        if overrides_temp:
+            logger.info(f" Loaded general overrides from session: {overrides_temp}")
+        else:
+            logger.warning(f" No general override info found for base: {filename_base}")
+
+        #  Check for Excel file upload
         if 'excel_file' not in request.files:
             flash('No Excel file uploaded', 'danger')
             return redirect(url_for('cost_sheet_reupload', extraction_id=extraction_id))
 
         file = request.files['excel_file']
-
-        # If no file was selected (empty filename)
         if file.filename == '':
             flash('No Excel file selected', 'danger')
             return redirect(url_for('cost_sheet_reupload', extraction_id=extraction_id))
 
-        # If the file has an allowed extension
         if file and allowed_file(file.filename):
-            # Secure the filename and create a unique filename for storage
             filename = secure_filename(file.filename)
-            filename_base = str(uuid.uuid4())
-            excel_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename_base}.xlsx")
+            excel_base = str(uuid.uuid4())
+            excel_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{excel_base}.xlsx")
 
             try:
-                # Save the uploaded Excel file
                 file.save(excel_path)
                 logger.info(f"Excel file saved at {excel_path}")
 
-                # Store the new Excel path in a file
-                excel_path_file = os.path.join(UPLOAD_FOLDER, f"excel_path_{extraction_id}.txt")
+                #  Store Excel path reference (optional)
+                excel_path_file = os.path.join(app.config['UPLOAD_FOLDER'], f"excel_path_{extraction_id}.txt")
                 try:
                     with open(excel_path_file, 'w') as f:
                         f.write(excel_path)
                     logger.debug(f"Updated Excel path stored in {excel_path_file}")
                 except Exception as e:
-                    logger.warning(f"Could not store updated Excel path: {e}. Continuing without storing path.")
+                    logger.warning(f"Could not store updated Excel path: {e}. Continuing.")
 
-                # Process with both PDF and Excel data
-                return process_with_excel_data(extraction_id, excel_path)
-                
+                #  Pass overrides forward (if applicable)
+                if hasattr(extraction, 'file_data') and isinstance(extraction.file_data, dict):
+                    if contact_info_temp:
+                        extraction.file_data['contact_info'] = contact_info_temp
+                    if overrides_temp:
+                        extraction.file_data.update(overrides_temp)
+                    logger.info(" Applied session overrides to extraction.file_data")
+
+                #  Process with both PDF and Excel
+                result = process_with_excel_data(extraction_id, excel_path)
+
+                # Optionally attach contact info in result JSON
+                if isinstance(result, dict):
+                    result['contact_info'] = contact_info_temp or {}
+                    result['overrides'] = overrides_temp or {}
+
+                return result if result else jsonify({"success": True})
+
             except Exception as e:
                 logger.error(f"Error processing Excel upload: {str(e)}")
                 flash(f"Error processing Excel file: {str(e)}", 'danger')
@@ -1160,28 +1598,25 @@ def reupload_cost_sheet(extraction_id):
         flash(f"Error processing reupload: {str(e)}", 'danger')
         return redirect(url_for('cost_sheet_reupload', extraction_id=extraction_id))
 
+
 def process_with_excel_data(extraction_id, excel_path):
     """Process extraction with both PDF and Excel data to generate Word document"""
     try:
         extraction = PDFExtraction.query.get_or_404(extraction_id)
         line_items = LineItem.query.filter_by(extraction_id=extraction_id).order_by(LineItem.display_order).all()
 
-        # Calculate total price (excluding optional items and section headers)
-        non_optional_items = [item for item in line_items 
-                             if not item.is_included 
-                             and not item.is_section_header 
-                             and not item.is_optional]
+        # Calculate total price
+        non_optional_items = [
+            item for item in line_items 
+            if not item.is_included and not item.is_section_header and not item.is_optional
+        ]
+        total_price = sum(float(item.price_total or 0.0) for item in non_optional_items)
 
-        total_price = 0.0
-        for item in non_optional_items:
-            item_price = 0.0 if item.price_total is None else float(item.price_total)
-            total_price += item_price
-
-        # Generate unique filename base for Word document
+        # Generate unique filename
         filename_base = str(uuid.uuid4())
         word_path = os.path.join(UPLOAD_FOLDER, f"{filename_base}.docx")
 
-        # Prepare customer info dictionary for processing
+        # Prepare customer info
         customer_info = {
             'customer_name': extraction.customer_name or 'Dart Aerospace',
             'location': extraction.location or 'N/A',
@@ -1194,6 +1629,12 @@ def process_with_excel_data(extraction_id, excel_path):
             'tray_height': extraction.tray_height or 'N/A',
             'total_price': total_price,
             'logo_path': extraction.logo_path,
+            'vlm_image_path': extraction.vlm_image_path,  # Include VLM image path
+            # Salesperson/contact info persisted in session (default to Josh Jancola if not provided)
+            'contact_name': (session.get(f'contact_info_{extraction.id}', {}) or {}).get('contact_name') or 'Josh Jancola',
+            'contact_email': (session.get(f'contact_info_{extraction.id}', {}) or {}).get('contact_email') or 'joshjancola@pacificintegrated.com',
+            'contact_phone': (session.get(f'contact_info_{extraction.id}', {}) or {}).get('contact_phone') or '253.500.4193',
+            'contact_office': (session.get(f'contact_info_{extraction.id}', {}) or {}).get('contact_office') or '888.550.5888',
             'line_items': [
                 {
                     'category': item.category or '',
@@ -1220,16 +1661,15 @@ def process_with_excel_data(extraction_id, excel_path):
                 }
                 for item in line_items if item.is_optional
             ],
-            'excel_path': excel_path  # Add Excel path for processing
+            'excel_path': excel_path
         }
 
-        # Process to Word with both PDF and Excel data
+        # Generate Word
         logger.info(f"Processing Word document with Excel path: {excel_path}")
         process_pdf_to_word(extraction.original_path, word_path, customer_info=customer_info)
-
         logger.debug(f"Generated Word file at {word_path}")
 
-        # Create session data for the final result page
+        # Create session data for result page
         file_data = {
             'original_name': os.path.basename(extraction.original_path),
             'pdf_path': extraction.original_path,
@@ -1239,7 +1679,39 @@ def process_with_excel_data(extraction_id, excel_path):
             'used_custom_info': True
         }
 
+        # Retrieve and apply contact info override if it exists
+        session_key = f'contact_by_base_{filename_base}'
+        contact_info_temp = session.get(session_key)
+
+        if contact_info_temp:
+            file_data['contact_info'] = contact_info_temp
+            print(f" Using overridden contact info from session: {contact_info_temp}")
+        else:
+            contact_info_extracted = file_data.get('contact_info', {})
+            file_data['contact_info'] = {
+                'contact_name': contact_info_extracted.get('contact_name', ''),
+                'contact_email': contact_info_extracted.get('contact_email', ''),
+                'contact_phone': contact_info_extracted.get('contact_phone', ''),
+                'contact_office': contact_info_extracted.get('contact_office', '')
+            }
+            print(" No overridden contact info found — using extracted/default info")
+
+        # Return final result
         return render_template('final_result.html', file_data=file_data)
+
+    except Exception as e:
+        logger.error(f"Error in process_with_excel_data: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+        # Make sure we return a response
+        return render_template('final_result.html', file_data=file_data)
+
+    except Exception as e:
+        logger.error(f"Error in process_with_excel_data: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 
     except Exception as e:
         logger.error(f"Error processing with Excel data: {str(e)}")
@@ -1254,3 +1726,103 @@ def page_not_found(e):
 @app.errorhandler(500)
 def server_error(e):
     return render_template('index.html', error="Server error. Please try again later."), 500
+
+# ====================== JSON API for Overrides ======================
+
+@app.route('/api/extractions/<int:extraction_id>', methods=['GET'])
+@user_required
+def api_get_extraction(extraction_id):
+    try:
+        extraction = PDFExtraction.query.get_or_404(extraction_id)
+        contact_info = session.get(f'contact_info_{extraction.id}', {}) or {}
+        data = {
+            'id': extraction.id,
+            'filename': extraction.filename,
+            'customer_name': extraction.customer_name,
+            'location': extraction.location,
+            'proposal_number': extraction.proposal_number,
+            'proposal_date': extraction.proposal_date,
+            'vlm_model': extraction.vlm_model,
+            'vlm_height': extraction.vlm_height,
+            'logo_path': extraction.logo_path,
+            'contact_name': contact_info.get('contact_name'),
+            'contact_email': contact_info.get('contact_email'),
+            'contact_phone': contact_info.get('contact_phone'),
+            'contact_office': contact_info.get('contact_office'),
+        }
+        return jsonify({'success': True, 'extraction': data})
+    except Exception as e:
+        logger.error(f"API get extraction error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/extractions/<int:extraction_id>/overrides', methods=['POST'])
+@user_required
+def api_set_overrides(extraction_id):
+    try:
+        extraction = PDFExtraction.query.get_or_404(extraction_id)
+        data = request.get_json(silent=True) or {}
+
+        # Update extraction fields (customer-related)
+        mapping = {
+            'customer_name': 'customer_name',
+            'location': 'location',
+            'proposal_number': 'proposal_number',
+            'proposal_date': 'proposal_date',
+            'model': 'vlm_model',
+        }
+        for key, attr in mapping.items():
+            val = data.get(key)
+            if val is not None and str(val).strip() != '':
+                setattr(extraction, attr, val)
+
+        # Optional: allow direct logo path set (if file already uploaded by other means)
+        logo_path = data.get('logo_path')
+        if logo_path:
+            extraction.logo_path = logo_path
+
+        db.session.commit()
+
+        # Update contact info in session
+        contact_info = {
+            'contact_name': data.get('contact_name'),
+            'contact_email': data.get('contact_email'),
+            'contact_phone': data.get('contact_phone'),
+            'contact_office': data.get('contact_office'),
+        }
+        session[f'contact_by_base_{extraction.filename_base}'] = contact_info
+        print(f"Storing contact info with key: contact_by_base_{contact_info}\n"*1)
+
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"API set overrides error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/extractions/<int:extraction_id>/logo', methods=['POST'])
+@user_required
+def api_upload_logo(extraction_id):
+    try:
+        extraction = PDFExtraction.query.get_or_404(extraction_id)
+        if 'customer_logo' not in request.files:
+            return jsonify({'success': False, 'error': 'customer_logo file is required'}), 400
+
+        file = request.files['customer_logo']
+        if not file or file.filename == '':
+            return jsonify({'success': False, 'error': 'Empty file'}), 400
+
+        if not allowed_image_file(file.filename):
+            return jsonify({'success': False, 'error': 'Unsupported image type'}), 400
+
+        filename_base = str(uuid.uuid4())
+        safe_name = secure_filename(file.filename)
+        logo_path = os.path.join(app.config['UPLOAD_FOLDER'], f"logo_{filename_base}_{safe_name}")
+        file.save(logo_path)
+
+        extraction.logo_path = logo_path
+        db.session.commit()
+
+        return jsonify({'success': True, 'logo_path': logo_path})
+    except Exception as e:
+        logger.error(f"API upload logo error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
