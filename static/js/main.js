@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Update loading message with processing stages
                 const loadingMessage = document.getElementById('loading-message');
                 
-                // Simulate progress messages (optional)
                 const messages = [
                     "Uploading PDF...",
                     "Extracting text from PDF...",
@@ -46,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
+
     // If we're on the review page, set up the same loading animation for the processing form
     const processForm = document.getElementById('process-form');
     if (processForm) {
@@ -59,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
         });
     }
-    
+
     // Set up toggle switches for custom info
     const customInfoToggle = document.getElementById('customInfoToggle');
     const customInfoFields = document.getElementById('customInfoFields');
@@ -69,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
             customInfoFields.style.display = this.checked ? 'block' : 'none';
         });
     }
-    
+
     // Initialize tooltips if Bootstrap is available
     if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -77,9 +76,51 @@ document.addEventListener('DOMContentLoaded', function() {
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
     }
-});
 
-// Function to hide the loading overlay (can be called explicitly)
-function hideLoadingOverlay() {
-    document.getElementById('loading-overlay').style.display = 'none';
-}
+    // 🔹 Toggle custom contact fields visibility
+    const customContactToggle = document.getElementById('use_custom_contact');
+    const contactInfoFields = document.getElementById('contactInfoFields');
+
+    console.log("contactInfoFields: ", contactInfoFields);
+    console.log("customContactToggle: ", customContactToggle);
+
+    if (customContactToggle && contactInfoFields) {
+        customContactToggle.addEventListener('change', function() {
+            contactInfoFields.style.display = this.checked ? 'block' : 'none';
+        });
+
+        if (customContactToggle.checked) {
+            contactInfoFields.style.display = 'block';
+        }
+    }
+
+    // ✅ Add this block at the end (sending values to Python)
+    const submitButton = document.getElementById("submitBtn");
+    if (submitButton) {
+        submitButton.addEventListener("click", async function () {
+            const useCustom = document.getElementById("use_custom_contact").checked;
+            const salesperson = document.getElementById("salesperson_select").value;
+            const phone = document.getElementById("contact_phone").value;
+
+            console.log("Sending to Python:", { useCustom, salesperson, phone });
+
+            try {
+                const response = await fetch("/save_contact_info", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        use_custom_contact: useCustom,
+                        salesperson: salesperson,
+                        contact_phone: phone
+                    })
+                });
+
+                const result = await response.json();
+                console.log("Response from Python:", result);
+            } catch (err) {
+                console.error("Error sending contact info:", err);
+            }
+        });
+    }
+
+}); // ✅ end of DOMContentLoaded

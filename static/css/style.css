@@ -287,3 +287,15 @@ footer {
 .vlm-image-option.selected img {
     border-color: #2196f3;
 }
+
+.h-77 {
+    height: 77% !important;
+}
+
+.h-full {
+    height: 100% !important;
+}
+
+.w-full {
+    width: 100% !important;
+}

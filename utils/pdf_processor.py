@@ -19,6 +19,9 @@ from pdf2image import convert_from_path
 from docx.enum.section import WD_SECTION
 # Set up logging
 logger = logging.getLogger(__name__)
+
+VALUE = 'software'
+
 def set_image_in_front_of_text(run):
     """
     Set the image in a run to be positioned in front of text
@@ -107,9 +110,19 @@ def extract_optional_items_from_excel(excel_path):
     logger.info(f"Starting Excel extraction from: {excel_path}")
     
     try:
+        global VALUE 
+        
         wb = openpyxl.load_workbook(excel_path, data_only=True)
         ws = wb.active  
         logger.info(f"Excel file loaded successfully. Active sheet: {ws.title}")
+       
+        # B18 -> column B, row 18
+        VALUE = ws["B18"].value
+        if isinstance(VALUE, str):
+            VALUE = VALUE.strip()
+            
+        print(f"VALUE is {VALUE}")    
+
 
         # Debug log a wider range
         logger.info("Checking Excel file content...")
@@ -181,6 +194,38 @@ def extract_optional_items_from_excel(excel_path):
 #end of the function
 
 
+#new brian code 
+from openpyxl import load_workbook
+
+NBSP = "\u00A0"
+
+def _normalize(s: str) -> str:
+    return " ".join(s.replace(NBSP, " ").split()).strip()
+
+def _value_from_cell_or_merge(ws, addr: str):
+    c = ws[addr]
+    if c.value is not None:
+        return c.value
+    # If B18 is inside a merged range, the value lives at the top-left cell of that range
+    for mr in ws.merged_cells.ranges:
+        if c.coordinate in mr:
+            return ws.cell(row=mr.min_row, column=mr.min_col).value
+    return None
+
+def get_b18_value(excel_path):
+    wb = load_workbook(excel_path, data_only=True)
+    ws = wb.active  # Use the first sheet; change if needed
+
+    # B18 -> column B, row 18
+    value = ws["B18"].value
+    if isinstance(value, str):
+        value = value.strip()
+    return value
+
+
+#new brian code
+
+
 def extract_customer_info_from_pdf(pdf_text):
     """
 
@@ -212,8 +257,6 @@ def extract_customer_info_from_pdf(pdf_text):
     # Extract the first few hundred characters from the PDF text
     text_snippet = full_text[:1000]  # increase range if necessary
 
-    
-    import re
 
     # Get only the first page text
     first_page_text = pdf_text_pages[0]
@@ -337,7 +380,7 @@ def extract_customer_info_from_pdf(pdf_text):
         inches = height_match.group(1)
         feet = height_match.group(2)
         customer_info["unit_height"] = f"{inches} inches ({feet})"
-
+        
     return customer_info
 
 def format_tray_dimensions(text):
@@ -992,7 +1035,6 @@ def create_modula_mapping_rules():
             "transform": lambda x: f"${x}"
             },
 
-
            "C43": {
             "pattern": r"RFID Badge Reader[\s\S]*?\$?\s*([\d,]+\.\d{2})",
             "group": 1,
@@ -1337,13 +1379,14 @@ def extract_customer_info_from_pdf(pdf_text):
     return customer_info
 
 
-def process_pdf_to_word(pdf_path, word_path, customer_info=None):
+def process_pdf_to_word(pdf_path, word_path, excel_path= None, customer_info=None):
     """
     Process a PDF file and save extracted data to a Word document
 
     Args:
         pdf_path: Path to the PDF file
         word_path: Path to save the Word document
+        excel_path: path to the Excel file to extract software info
         customer_info: Optional dictionary with customer information
     """
     import os
@@ -1428,6 +1471,70 @@ def process_pdf_to_word(pdf_path, word_path, customer_info=None):
 
         # Extract tray dimensions and other specifications
         tray_dimensions = format_tray_dimensions(full_text)
+        
+        #new brian code 
+        # Extract Storage Area
+        storage_area = "N/A"  # default
+        storage_area_rule = mapping_rules["Primary Option"]["B13"]  # Storage Area
+        if "pattern" in storage_area_rule:
+            import re
+            area_match = re.search(storage_area_rule["pattern"], full_text, re.IGNORECASE)
+            if area_match:
+                storage_area = area_match.group(storage_area_rule["group"])
+                    
+        # Extract Storage Volume
+        storage_volume = "N/A"  # default
+        storage_volume_rule = mapping_rules["Primary Option"]["B12"]  # Storage Volume
+        if "pattern" in storage_volume_rule:
+            import re
+            volume_match = re.search(storage_volume_rule["pattern"], full_text, re.IGNORECASE)
+            if volume_match:
+                storage_volume = volume_match.group(storage_volume_rule["group"])
+
+        # Extract Unit Footprint
+        import re
+
+        unit_footprint = "N/A"  # default
+        unit_footprint_rule = mapping_rules["Primary Option"]["B14"]  # Unit Footprint
+
+        # Ensure both pattern and group exist before trying to extract
+        if unit_footprint_rule and "pattern" in unit_footprint_rule and "group" in unit_footprint_rule:
+            pattern = unit_footprint_rule["pattern"]
+            group_num = unit_footprint_rule["group"]
+
+            # Clean full_text to avoid hidden line breaks or spacing issues
+            cleaned_text = re.sub(r'\s+', ' ', full_text.strip())
+
+            # Perform regex search
+            footprint_match = re.search(pattern, cleaned_text, re.IGNORECASE)
+            if footprint_match:
+                try:
+                    unit_footprint = footprint_match.group(group_num).strip()
+                except IndexError:
+                    unit_footprint = "N/A"  # fallback if group not found
+
+        # Extract Height
+        height = "N/A"  # default
+        height_rule = mapping_rules["Primary Option"]["B11"]  # Height
+        if "pattern" in height_rule:
+            import re
+            height_match = re.search(height_rule["pattern"], full_text, re.IGNORECASE)
+            if height_match:
+                height = height_match.group(height_rule["group"])
+
+
+        # Try to extract tray dimensions (Width and Depth)
+        # Default tray dimensions
+        tray_dimensions = "Width: N/A x Depth: N/A"  
+
+        tray_rule = mapping_rules["Primary Option"]["B10"]
+
+        # Check if a custom handler exists
+        if "custom_handler" in tray_rule:
+            tray_dimensions = tray_rule["custom_handler"](full_text)  # call format_tray_dimensions function
+        #     tray_dimensions = f"Width: {width}'' x Depth: {depth}''"
+
+
 
         # ======== COVER PAGE ========
         # First section - for cover page
@@ -1490,75 +1597,83 @@ def process_pdf_to_word(pdf_path, word_path, customer_info=None):
         presents_run.italic = True
         presents_run.font.size = Pt(11)
 
-        # Add customer logo (actual image if provided, otherwise placeholder text)
+        # Add customer logo (prefer uploaded logo if provided, otherwise fallback to PDF crop or placeholder)
         customer_logo_paragraph = doc.add_paragraph()
         customer_logo_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        
-        try:
-            import fitz  # PyMuPDF
-            import tempfile, os
-            from docx.shared import Inches, Pt
-            from docx.enum.text import WD_ALIGN_PARAGRAPH
 
-            # Open the PDF and take the first page (index 0)
-            pdf_doc = fitz.open(pdf_path)
-            page = pdf_doc[0]
-            rect = page.rect  
-
-            # Define crop area for top-left corner
-            crop_width = rect.width * 0.25
-            crop_height = rect.height * 0.12  
-
-            # Margins: adjust top & right only
-            margin_top = 15    # crop a bit more from the top
-            margin_right = 15  # crop a bit more from the right
-
-            crop_rect = fitz.Rect(
-                rect.x0,                          # keep left as is
-                rect.y0 + margin_top,             # push down from the top
-                rect.x0 + crop_width - margin_right,  # trim more from the right
-                rect.y0 + crop_height             # keep bottom as is
-            )
-
-            pix = page.get_pixmap(dpi=300, clip=crop_rect)
-        
-
-
-
-            # Render cropped portion
-            pix = page.get_pixmap(dpi=300, clip=crop_rect)
-
-            # Save cropped image temporarily
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_img:
-                temp_path = temp_img.name
-            pix.save(temp_path)
-            pdf_doc.close()
-
-            # Insert into Word document (same logic as your logo code)
-            if os.path.exists(temp_path):
-                customer_logo_paragraph = doc.add_paragraph()
-                customer_logo_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        # Prefer explicitly uploaded customer logo if available
+        uploaded_logo_path = (customer_info or {}).get('logo_path')
+        if uploaded_logo_path and os.path.exists(uploaded_logo_path):
+            try:
                 run = customer_logo_paragraph.add_run()
-                run.add_picture(temp_path, width=Inches(2.5))  # scale logo size similar to original
-                os.unlink(temp_path)
-                logger.info("Extracted first page cropped image as customer logo.")
-            else:
-                # Fallback to placeholder text if something fails
+                run.add_picture(uploaded_logo_path, width=Inches(2.5))
+                logger.info(f"Added uploaded customer logo from {uploaded_logo_path}")
+            except Exception as logo_e:
+                logger.error(f"Error adding uploaded customer logo: {str(logo_e)}")
+        else:
+            # Fallback: attempt to crop a logo-like region from the first page of the source PDF
+            try:
+                import fitz  # PyMuPDF
+                import tempfile, os
+                from docx.shared import Inches, Pt
+                from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+                # Open the PDF and take the first page (index 0)
+                pdf_doc = fitz.open(pdf_path)
+                page = pdf_doc[0]
+                rect = page.rect  
+
+                # Define crop area for top-left corner
+                crop_width = rect.width * 0.25
+                crop_height = rect.height * 0.12  
+
+                # Margins: adjust top & right only
+                margin_top = 15    # crop a bit more from the top
+                margin_right = 15  # crop a bit more from the right
+
+                crop_rect = fitz.Rect(
+                    rect.x0,                          # keep left as is
+                    rect.y0 + margin_top,             # push down from the top
+                    rect.x0 + crop_width - margin_right,  # trim more from the right
+                    rect.y0 + crop_height             # keep bottom as is
+                )
+
+                pix = page.get_pixmap(dpi=300, clip=crop_rect)
+        
+                # Render cropped portion
+                pix = page.get_pixmap(dpi=300, clip=crop_rect)
+
+                # Save cropped image temporarily
+                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_img:
+                    temp_path = temp_img.name
+                pix.save(temp_path)
+                pdf_doc.close()
+
+                # Insert into Word document (same logic as your logo code)
+                if os.path.exists(temp_path):
+                    customer_logo_paragraph = doc.add_paragraph()
+                    customer_logo_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    run = customer_logo_paragraph.add_run()
+                    run.add_picture(temp_path, width=Inches(2.5))  # scale logo size similar to original
+                    os.unlink(temp_path)
+                    logger.info("Extracted first page cropped image as customer logo.")
+                else:
+                    # Fallback to placeholder text if something fails
+                    cust_name = customer_info.get('customer_name', customer_info.get('name', 'Customer'))
+                    customer_logo_paragraph = doc.add_paragraph()
+                    customer_logo_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    customer_logo_run = customer_logo_paragraph.add_run(f"[{cust_name} LOGO]")
+                    customer_logo_run.font.size = Pt(24)
+                    customer_logo_run.bold = True
+
+            except Exception as e:
+                logger.error(f"Error extracting logo from PDF: {str(e)}")
                 cust_name = customer_info.get('customer_name', customer_info.get('name', 'Customer'))
                 customer_logo_paragraph = doc.add_paragraph()
                 customer_logo_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 customer_logo_run = customer_logo_paragraph.add_run(f"[{cust_name} LOGO]")
                 customer_logo_run.font.size = Pt(24)
                 customer_logo_run.bold = True
-
-        except Exception as e:
-            logger.error(f"Error extracting logo from PDF: {str(e)}")
-            cust_name = customer_info.get('customer_name', customer_info.get('name', 'Customer'))
-            customer_logo_paragraph = doc.add_paragraph()
-            customer_logo_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            customer_logo_run = customer_logo_paragraph.add_run(f"[{cust_name} LOGO]")
-            customer_logo_run.font.size = Pt(24)
-            customer_logo_run.bold = True
 
 
         # Add location and quote
@@ -1583,15 +1698,16 @@ def process_pdf_to_word(pdf_path, word_path, customer_info=None):
         model_desc_run = model_desc_paragraph.add_run(f"{model_desc}")
         model_desc_run.font.size = Pt(12)
 
-        # Add VLM image placeholder (this would normally be an actual image)
-        vlm_image_path = os.path.join('static', 'images', 'vlm machine.png')
+        # Add VLM image for cover page: prefer user-selected image, fallback to default asset
+        vlm_image_path = (customer_info or {}).get('vlm_image_path') or os.path.join('static', 'images', 'vlm machine.png')
 
-        if os.path.exists(vlm_image_path):
+        if vlm_image_path and os.path.exists(vlm_image_path):
             # Add the actual PIH logo
             try:
                 vlm_image_paragraph = doc.add_paragraph()
                 vlm_image_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                vlm_image_paragraph.add_run().add_picture(vlm_image_path, width=Inches(2.0))
+                # Use a larger width for the VLM image (cover page feature)
+                vlm_image_paragraph.add_run().add_picture(vlm_image_path, width=Inches(1.5))
                 logger.debug(f"Added vlm image from {vlm_image_path}")
             except Exception as logo_e:
                 logger.error(f"Error adding vlm image: {str(logo_e)}")
@@ -1601,7 +1717,7 @@ def process_pdf_to_word(pdf_path, word_path, customer_info=None):
                 logo_run.bold = True
         else:
             # Fallback if logo file is not found
-            logo_run = vlm_image_paragraph.add_run("[VLM IMAGE    PLACEHOLDER]")
+            logo_run = vlm_image_paragraph.add_run("[VLM IMAGE  PLACEHOLDER]")
             logo_run.font.size = Pt(14)
             logo_run.bold = True
 
@@ -1651,6 +1767,23 @@ def process_pdf_to_word(pdf_path, word_path, customer_info=None):
         recipient_name = customer_info.get('contact_person', 'Jonathon Johnson')
         recipient_para = doc.add_paragraph()
         recipient_para.add_run(f"{recipient_name},").bold = False
+        
+        # new brian code
+        # if excel_path:
+        #     software_name = extract_software_name_from_excel(excel_path)
+        # else:
+        #     software_name = "Modula WMS Premium"
+              # fallback
+        
+        # new brian code 
+        # Extract software name
+        # Extract software name from Excel
+        if customer_info and customer_info.get('excel_path'):
+            excel_path = customer_info.get('excel_path')
+            # Normalize the path to handle both forward and backward slashes
+            excel_path = os.path.normpath(excel_path)
+        extract_optional_items_from_excel(excel_path)
+
 
         # Add Executive Summary - main content in properly formatted paragraphs
         # First paragraph - cleanroom storage solution
@@ -1668,17 +1801,18 @@ def process_pdf_to_word(pdf_path, word_path, customer_info=None):
 
         # Paragraph 3 - Storage capacity details
         para3 = doc.add_paragraph()
-        para3_text = f"The VLM will have a total storage capacity of 634.66 sq ft. and 363.6 cubic ft. of volume in a very small footprint of 124.28 sq. ft. While on-site, I completed a survey of the existing materials in the cleanroom and concluded that (with a 50% buffer) only 136.80 cubic ft is needed for storage. This will give Thermo Fisher plenty of room for growth or flexibility in what is kept within the VLM. A safety photo eye curtain system will protect operators during mechanical movements. All safety devices and machine designs meet CE standards. In addition, tool accessible doors on the side of the unit will allow service personnel access to the units for scheduled maintenance. The VLM will come with 2 years of parts and labor warranty as well as a PIH exclusive 3 scheduled maintenance visits."
+        para3_text = f"The VLM will have a total storage capacity of {storage_volume} sq ft. and {storage_area} cubic ft of volume in a very small footprint of {unit_footprint} sq ft. While on-site, I completed a survey of the existing materials in the cleanroom and concluded that (with a 50% buffer) only 136.80 cubic ft is needed for storage. This will give {client_name} plenty of room for growth or flexibility in what is kept within the VLM. A safety photo eye curtain system will protect operators during mechanical movements. All safety devices and machine designs meet CE standards. In addition, tool accessible doors on the side of the unit will allow service personnel access to the units for scheduled maintenance. The VLM will come with 2 years of parts and labor warranty as well as a PIH exclusive 3 scheduled maintenance visits."
         para3.add_run(para3_text).bold = False
 
         # Paragraph 4 - Tray information
         para4 = doc.add_paragraph()
-        para4_text = f"Additionally, the VLM have a height of 145.67 inches (12' 2.64\") and will contain {num_trays} slotted trays - all of which are sized as 161.41\" wide and 25.75\" deep and will be capable of holding up to 551 lbs. Slotted trays will allow {client_name} to use Modula dividers to create storage cells within the trays to organize smaller parts."
+        para4_text = f"Additionally, the VLM have a height of {height} inches and will contain {num_trays} slotted trays - all of which are sized as {tray_dimensions} and will be capable of holding up to 551 lbs. Slotted trays will allow {client_name} to use Modula dividers to create storage cells within the trays to organize smaller parts."
         para4.add_run(para4_text).bold = False
-
+        
         # Paragraph 5 - Software details
+        print(f"Software = {VALUE}"*1)
         para5 = doc.add_paragraph()
-        para5_text = "This proposal includes software installation of Modula WMS Premium, which is comprehensive software and will allow for the incorporation of bar code scanning, ERP integration, and future implementation of put-to-light systems, per the discussion on site."
+        para5_text = f"This proposal includes software installation of {VALUE}, which is comprehensive software and will allow for the incorporation of bar code scanning, ERP integration, and future implementation of put-to-light systems, per the discussion on site."
         para5.add_run(para5_text).bold = False
 
         # Paragraph 6 - ISO7 readiness
@@ -2563,7 +2697,8 @@ def process_pdf_to_word(pdf_path, word_path, customer_info=None):
         signature_table.columns[1].width = Inches(3.5)
 
         # Add content to signature table
-        signature_table.cell(0, 0).text = "Josh Jancola, Sales Representative"
+        contact_name_sig = (customer_info or {}).get('contact_name', 'Josh Jancola')
+        signature_table.cell(0, 0).text = f"{contact_name_sig}, Sales Representative"
         for para in signature_table.cell(0, 0).paragraphs:
             for run in para.runs:
                 run.font.size = Pt(10)

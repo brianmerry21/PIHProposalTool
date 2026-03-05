@@ -16,6 +16,7 @@ class PDFExtraction(db.Model):
     proposal_date = db.Column(db.String(50))
     location = db.Column(db.String(255))
     logo_path = db.Column(db.String(512))  # Path to uploaded customer logo
+    vlm_image_path = db.Column(db.String(512))  # Path to selected or uploaded VLM image
     # excel_path = db.Column(db.String(512))  # Path to generated/reuploaded Excel file - temporarily commented out
     
     # VLM specifications

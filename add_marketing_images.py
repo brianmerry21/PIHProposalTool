@@ -6,7 +6,6 @@ import os
 import logging
 import tempfile
 from pdf2image import convert_from_path
-
 import shutil
 
 # Setup logging
